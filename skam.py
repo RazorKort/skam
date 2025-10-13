@@ -2,6 +2,9 @@ from nacl import public
 from nacl.public import PrivateKey, PublicKey, Box
 from nacl.signing import SigningKey, VerifyKey
 from nacl.encoding import Base64Encoder
+from nacl.secret import SecretBox
+
+from argon2.low_level import hash_secret_raw, Type
 
 from prompt_toolkit import PromptSession
 from prompt_toolkit.patch_stdout import patch_stdout
@@ -17,9 +20,47 @@ import websocket
 import rel
 
 URL = 'https://skam.onrender.com'
-#sesson = PromptSession()
+sesson = PromptSession()
+KDF_TIME = 2
+KDF_MEMORY_KB = 64 * 1024
+KDF_LEN = 32
+KDF_PARALLELISM = 2
+SALT_LEN = 16
 
+def derive_key(password: str, salt: bytes):
+    pw = password.encode('utf-8')
+    key = hash_secret_raw(
+        secret=pw,
+        salt=salt,
+        time_cost=KDF_TIME,
+        memory_cost=KDF_MEMORY_KB,
+        parallelism=KDF_PARALLELISM,
+        hash_len=KDF_LEN,
+        type=Type.ID)
+    return key
 
+def encrypt_key(priv_pytes: bytes,sign_bytes: bytes, password: str):
+    salt = os.urandom(SALT_LEN)
+    key = derive_key(password, salt)
+    box = SecretBox(key)
+    ch_priv = box.encrypt(priv_pytes)
+    ch_sign = box.encrypt(sign_bytes)
+    payload = {
+        "salt": base64.b64encode(salt).decode("ascii"),
+        "private_key": base64.b64encode(ch_priv).decode("ascii"),
+        "signing_key": base64.b64encode(ch_sign).decode("ascii")}
+    return json.dumps(payload)
+
+def decrypt_key(payload_json: str, password: str):
+    obj = json.loads(payload_json)
+    salt = base64.b64decode(obj['salt'])
+    ch_priv = base64.b64decode(obj['private_key'])
+    ch_sign = base64.b64decode(obj['signing_key'])
+    key = derive_key(password, salt)
+    box = SecretBox(key)
+    priv_bytes = box.decrypt(ch_priv)
+    sign_bytes = box.decrypt(ch_sign)
+    return priv_bytes, sign_bytes
 
 def clear_con():
     os.system('cls' if os.name == 'nt' else 'clear')
@@ -82,32 +123,29 @@ def auth():
         if resp.json().get('status') == 'ok':
             token = resp.json().get('token')
             user_id = resp.json().get('id')
-            with open('private.key', 'wb') as f:
-                f.write(base64.b64encode(priv_key.encode()))
-            with open('signing.key', 'wb') as f:
-                f.write(base64.b64encode(sign_key.encode()))
+            paswd = input('Введите пароль для шифрования ключей. Его нельзя будет восстановить\n>')
+            payload = encrypt_key(priv_key.encode(), sign_key.encode(), paswd)
+            with open('session.key','w') as f:
+                f.write(payload)
             return token, user_id, priv_key, pub_key, sign_key, verif_key, name
         else:
             print('Ошибка при регистрации')
             return register()
+    if os.path.exists('session.key') and os.path.getsize != 0:
+        while True:
+            try: 
+                paswd = input('Введите пароль\n>')
+                with open('session.key','r') as f:
+                    payload = f.read()
+                priv_bytes, sign_bytes = decrypt_key(payload, paswd)
+                priv_key = PrivateKey(priv_bytes)
+                pub_key = priv_key.public_key
+                sign_key = SigningKey(sign_bytes)
+                verif_key = sign_key.verify_key
+                break
+            except:
+                print('Неверный пароль или повреждённый файл c ключами')
         
-    if (os.path.exists('private.key') and 
-        os.path.getsize('private.key') != 0 and
-        os.path.exists('signing.key') and 
-        os.path.getsize('signing.key') != 0):
-        
-        with open('private.key','rb') as f:
-            priv_bytes = base64.b64decode(f.read())
-            priv_key = PrivateKey(priv_bytes)
-            
-            pub_key = priv_key.public_key
-              
-        with open('signing.key','rb') as f:
-            sign_bytes = base64.b64decode(f.read())
-            sign_key = SigningKey(sign_bytes)
-            
-            verif_key = sign_key.verify_key
-            
         resp = requests.post(f'{URL}/auth-request', json={"public_key": base64.b64encode(pub_key.encode()).decode()})
         if resp.json().get('status') == 'ok':
             seed = resp.json().get('seed')
@@ -136,12 +174,14 @@ def auth():
     else:
         choice = int(input('''Файл авторизации не найден
 [1] Зарегистрироваться
-[2] Импорт ключей из файла                          
+[2] Импорт ключей из файла
 > '''))
         if choice == 1:
             return register()
         if choice == 2:
-            print('пока не доделал это')
+            import_key()
+            clear_con()
+            return auth()
         
 def remove_friend(token: str, tid: int):
     resp = requests.post(f'{URL}/removefriend', json={'token': token, 'target_id': tid})
@@ -246,33 +286,47 @@ def load_msgs(token: str):
             print(f'[{i.get('name')}]: {message}')
     else:
         print('Возникла ошибка при загрузке истории сообщений')
-    
+
+def change_password():
+    paswd = input('Введите новый пароль\n>')
+    priv_bytes = priv_key.encode()
+    sign_bytes = sign_key.encode()
+    payload = encrypt_key(priv_bytes, sign_bytes, paswd)
+    with open('session.key','w') as f:
+        f.write(payload)
+    print(f'Пароль успешно сменён на {paswd}')
+    input('Нажмите Enter для выхода')
 def info(token: str):
     global name
-    print(f'''Ник: {name}
+    while True:
+        clear_con()
+        print(f'''Ник: {name}
 Id: {user_id}''')
-    choice = int(input('''[1] Изменить ник
-[2] Экспортировать ключи в файл
-[3] Удалить профиль
+        choice = int(input('''[1] Изменить ник
+[2] Сменить пароль                   
+[3] Экспортировать ключи в файл
+[4] Удалить профиль
 [0] Выход в меню                  
 >'''))
-    if choice == 1:
-        clear_con()
-        new_name = input('Введите новый ник > ')
-        resp = requests.post(f'{URL}/changename', json={'token':token, 'new_name':new_name})
-        if resp.json().get('status') == 'ok':
-            name = new_name
-            print(f'Ваш новый ник : {name}')
-            input('Нажмите Enter')
-        else:
-            print('Что-то пошло не так...')
-            input('Нажмите Enter для выхода')
-    elif choice == 2:
-        pass
-    elif choice == 3:
-        remove_profile(token)
-    
-    return 0
+        if choice == 1:
+            clear_con()
+            new_name = input('Введите новый ник > ')
+            resp = requests.post(f'{URL}/changename', json={'token':token, 'new_name':new_name})
+            if resp.json().get('status') == 'ok':
+                name = new_name
+                print(f'Ваш новый ник : {name}')
+                input('Нажмите Enter')
+            else:
+                print('Что-то пошло не так...')
+                input('Нажмите Enter для выхода')
+        elif choice == 2:
+            change_password()
+        elif choice == 3:
+            export_key()
+        elif choice == 4:
+            remove_profile(token)
+        elif choice == 0:
+            break
 
 def actions(target_id: int):
     while True:
@@ -292,6 +346,48 @@ def actions(target_id: int):
             remove_chat(token, target_id)
         elif choice == 0:
             break
+
+def import_key():
+    def skuka(path: str):
+        with open(path,'r') as f:
+            lines = f.readlines()
+        priv_bytes = base64.b64decode(lines[0])
+        sign_bytes = base64.b64decode(lines[1])
+        paswd = input('Введите пароль для шифрования ключей. Восстановить его не получится\n>')
+        payload = encrypt_key(priv_bytes, sign_bytes, paswd)
+        with open('session.key','w') as f:
+            f.write(payload)
+        priv_key = PrivateKey(priv_bytes)
+        pub_key = priv_key.public_key
+        sign_key = SigningKey(sign_bytes)
+        verif_key = sign_key.verify_key
+        return 0
+    clear_con()
+    if os.path.exists('keys.txt') and os.path.getsize('keys.txt') != 0:
+        print('Обнаружен файл с ключами. Использовать его?')
+        choice = int(input('[1] Да\n[2] Нет\n> '))
+        if choice == 1:
+            skuka('keys.txt')
+            return 0
+        
+    while True:
+        print('Введите путь до файла с ключами')
+        path = input('> ')
+        try:
+            skuka(path)
+            break
+        except:
+            print('Неверный путь')
+    return 0
+
+def export_key():
+    priv = base64.b64encode(priv_key.encode()).decode()+'\n'
+    sign = base64.b64encode(sign_key.encode()).decode()
+    with open('keys.txt','w') as f:
+        f.write(priv)
+        f.write(sign)
+    print('Ключи успешно записаны в файл keys.txt. Файл находится в корне программы.')
+    input('Нажминет Enter для выхода')
 
 def start_chat(token:str):
     
@@ -328,7 +424,6 @@ if __name__ == '__main__':
         elif choice == 2:
             add_friend(token)
         elif choice == 3:
-            clear_con()
             info(token)
             
         elif choice == 0:
