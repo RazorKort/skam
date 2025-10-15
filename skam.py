@@ -20,7 +20,7 @@ import websocket
 import rel
 
 URL = 'https://skam.onrender.com'
-sesson = PromptSession()
+#sesson = PromptSession()
 KDF_TIME = 2
 KDF_MEMORY_KB = 64 * 1024
 KDF_LEN = 32
@@ -235,17 +235,40 @@ def get_friends(token: str):
             if choice<=len(friends) and choice>=0:
                 return int(friends[choice-1].get('friend_id'))
             else:
-                print('Нормально напиши, черт')
+                print('Нормально напиши')
     elif resp.json().get('status') == 'lonely':
         print('У тебя нет друзей :(')
         return int(input('Можешь ввести id вручную (00 для выхода) > '))
     else:
         print('Что-то пошло не так')
         return int(input('Можешь попробовать ввести id вручную (00 для выхода) > '))
-    
+
+def search_friend():
+    clear_con()
+    name = input('Введите имя для поиска\n> ')
+    resp = requests.post(f'{URL}/search', json={'name':name})
+    if resp.json().get('status') == 'ok':
+        users = resp.json().get('users')
+        print('Найденные пользователи')
+        for i in range(len(users)):
+            print(f'[{i+1}] {users[i].get('nickname')}')
+        while True:
+            choice = int(input('> '))
+            if choice<=len(users) and choice>=0:
+                return int(users[choice-1].get('id'))
+            else:
+                print('Нормально напиши')
+    else:
+        print('Ничего не найдено')
+        input('Введите id вручную > ')
+
 def add_friend(token: str):
     clear_con()
-    friend_id = int(input('Введи id друга > '))
+    choice = int(input('[1] Поиск по имени\n[2] Ввести id вручную\n> '))
+    if choice == 1:
+        friend_id = search_friend()
+    else:
+        friend_id = int(input('Введи id друга > '))
     resp = requests.post(f'{URL}/addfriend', json={'token':token,
                                                                        'friend_id': friend_id})
     if resp.json().get('status') == 'ok':
