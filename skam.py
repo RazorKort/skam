@@ -19,8 +19,8 @@ import json
 import websocket
 import rel
 
-URL = 'https://skam.onrender.com'
-#sesson = PromptSession()
+URL = 'http://192.168.0.100:10000'
+sesson = PromptSession()
 KDF_TIME = 2
 KDF_MEMORY_KB = 64 * 1024
 KDF_LEN = 32
