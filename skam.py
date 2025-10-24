@@ -227,17 +227,17 @@ def get_friends(token: str):
     resp = requests.post(f'{URL}/friends', json={'token':token})
     if resp.json().get('status') == 'ok':
         friends = resp.json().get('friends')
-        print('Ваши друзья\n00 для выхода')
+        print('Ваши друзья')
         for i in range(len(friends)):
             print(f'[{i+1}] {friends[i].get('nickname')}')
-        
+        print('\n[0] Dыход')
         
         while True:
             choice = int(input('> '))
-            if choice<=len(friends) and choice>=0:
+            if choice<=len(friends) and choice>0:
                 return int(friends[choice-1].get('friend_id'))
             elif choice == 0 or choice == 00:
-                return 00
+                return 0
             else:
                 print('Таких нету')
     elif resp.json().get('status') == 'lonely':
@@ -256,10 +256,13 @@ def search_friend():
         print('Найденные пользователи')
         for i in range(len(users)):
             print(f'[{i+1}] {users[i].get('nickname')}')
+        print('\n[0] Выход')
         while True:
             choice = int(input('> '))
-            if choice<=len(users) and choice>=0:
+            if choice<=len(users) and choice>0:
                 return int(users[choice-1].get('id'))
+            elif choice == 0 or choice == 00:
+                return 0
             else:
                 print('Нормально напиши')
     else:
@@ -267,14 +270,19 @@ def search_friend():
         input('Введите id вручную > ')
 
 def add_friend(token: str):
+    global friend_id
     clear_con()
-    choice = int(input('[1] Поиск по имени\n[2] Ввести id вручную\n> '))
+    choice = int(input('[1] Поиск по имени\n[2] Ввести id вручную\n[0] Выйти\n> '))
     if choice == 1:
         friend_id = search_friend()
-    else:
+    elif choice == 0:
+        return 0
+    elif choice == 2:
         friend_id = int(input('Введи id друга > '))
-    resp = requests.post(f'{URL}/addfriend', json={'token':token,
-                                                                       'friend_id': friend_id})
+    if friend_id == 0:
+        return 0
+    resp = requests.post(f'{URL}/addfriend', json={'token':token,'friend_id': friend_id})
+    print('как я тут оказался c',friend_id)
     if resp.json().get('status') == 'ok':
         print('Друг успешно добавлен')
         input('Нажми Enter для выхода')
@@ -439,7 +447,7 @@ if __name__ == '__main__':
 [0] Выйти\n> '''))
         if choice == 1:
             target_id = get_friends(token)
-            if target_id == 00:
+            if target_id == 0:
                 pass
             else:
                 public_target = get_public_key(target_id)
