@@ -19,7 +19,8 @@ import json
 import websocket
 import rel
 
-URL = 'http://192.168.0.100:10000'
+URL = 'https://skam.su:10000'
+URL2='wss://skam.su:10000'
 sesson = PromptSession()
 KDF_TIME = 2
 KDF_MEMORY_KB = 64 * 1024
@@ -79,6 +80,7 @@ def on_message(ws, message):
 
     
 def on_error(ws, error):
+    print(error)
     print('Сервер отвалился ненадого. Как все заработает, чат восстановится')
     
 def on_close(ws, close_status_code, close_msg):
@@ -225,7 +227,7 @@ def get_friends(token: str):
     resp = requests.post(f'{URL}/friends', json={'token':token})
     if resp.json().get('status') == 'ok':
         friends = resp.json().get('friends')
-        print('Ваши друзья')
+        print('Ваши друзья\n00 для выхода')
         for i in range(len(friends)):
             print(f'[{i+1}] {friends[i].get('nickname')}')
         
@@ -234,8 +236,10 @@ def get_friends(token: str):
             choice = int(input('> '))
             if choice<=len(friends) and choice>=0:
                 return int(friends[choice-1].get('friend_id'))
+            elif choice == 0 or choice == 00:
+                return 00
             else:
-                print('Нормально напиши')
+                print('Таких нету')
     elif resp.json().get('status') == 'lonely':
         print('У тебя нет друзей :(')
         return int(input('Можешь ввести id вручную (00 для выхода) > '))
@@ -415,7 +419,7 @@ def export_key():
 def start_chat(token:str):
     
     websocket.enableTrace(False)
-    ws = websocket.WebSocketApp(f'wss://skam.onrender.com/ws?token={token}',
+    ws = websocket.WebSocketApp(f'{URL2}/ws?token={token}',
                                     on_open=on_open,
                                     on_message=on_message,
                                     on_error=on_error,
