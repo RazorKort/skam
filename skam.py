@@ -215,8 +215,8 @@ def remove_profile(token: str):
     if choice == 32:
         resp = requests.post(f'{URL}/remove', json={'token':token})
         if resp.json().get('status') == 'ok':
-            os.remove('private.key')
-            os.remove('signing.key')
+            os.remove('session.key')
+            
             input('Всё удалено. Enter для выхода')
             os._exit(0)
         else:
