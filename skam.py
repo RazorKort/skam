@@ -229,7 +229,7 @@ def get_friends(token: str):
         friends = resp.json().get('friends')
         print('Ваши друзья')
         for i in range(len(friends)):
-            print(f'[{i+1}] {friends[i].get('nickname')}')
+            print(f"[{i+1}] {friends[i].get('nickname')}")
         print('\n[0] Dыход')
         
         while True:
@@ -255,7 +255,7 @@ def search_friend():
         users = resp.json().get('users')
         print('Найденные пользователи')
         for i in range(len(users)):
-            print(f'[{i+1}] {users[i].get('nickname')}')
+            print(f"[{i+1}] {users[i].get('nickname')}")
         print('\n[0] Выход')
         while True:
             choice = int(input('> '))
@@ -282,7 +282,6 @@ def add_friend(token: str):
     if friend_id == 0:
         return 0
     resp = requests.post(f'{URL}/addfriend', json={'token':token,'friend_id': friend_id})
-    print('как я тут оказался c',friend_id)
     if resp.json().get('status') == 'ok':
         print('Друг успешно добавлен')
         input('Нажми Enter для выхода')
@@ -318,7 +317,7 @@ def load_msgs(token: str):
             snd = i.get('message')
             message = box.decrypt(base64.b64decode(snd))
             message = message.decode("utf-8")
-            print(f'[{i.get('name')}]: {message}')
+            print(f"[{i.get('name')}]: {message}")
     else:
         print('Возникла ошибка при загрузке истории сообщений')
 
@@ -436,7 +435,6 @@ def start_chat(token:str):
 
 
 if __name__ == '__main__':
-    print('Ждём пока сервер проснётся. Может занять несколько минут')
 
     token, user_id, priv_key, pub_key, sign_key, verif_key, name = auth()
     while True:
