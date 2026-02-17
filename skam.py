@@ -230,7 +230,7 @@ def get_friends(token: str):
         print('Ваши друзья')
         for i in range(len(friends)):
             print(f"[{i+1}] {friends[i].get('nickname')}")
-        print('\n[0] Dыход')
+        print('\n[0] Выход')
         
         while True:
             choice = int(input('> '))
