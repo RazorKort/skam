@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"os"
 
+	"crypto/rand"
+
 	"golang.org/x/crypto/nacl/secretbox"
 	"golang.org/x/crypto/scrypt"
 )
@@ -43,7 +45,10 @@ func DecryptKey(password string, salt string, bytes string) (*[32]byte, error) {
 	}
 
 	var key [32]byte
-	temp, _ := scrypt.Key([]byte(password), salt_b, 32768, 8, 1, 32)
+	temp, err := scrypt.Key([]byte(password), salt_b, 32768, 8, 1, 32)
+	if err != nil {
+		return nil, err
+	}
 	copy(key[:], temp)
 
 	var nonce [24]byte
@@ -60,6 +65,54 @@ func DecryptKey(password string, salt string, bytes string) (*[32]byte, error) {
 	var key_b [32]byte
 	copy(key_b[:], plaintext)
 	return &key_b, nil
+}
+
+// шифрует байтики и пишет в файл
+func EncryptKey(password string, c *Client) error {
+	//генерим соль
+	salt := make([]byte, 16)
+	_, _ = rand.Read(salt)
+
+	//ключ их соли + пароль
+	key, err := scrypt.Key([]byte(password), salt, 32768, 8, 1, 32)
+	if err != nil {
+		return err
+	}
+	var secretKey [32]byte
+	copy(secretKey[:], key)
+
+	//nonce и шифрование
+	var nonce [24]byte
+	_, _ = rand.Read(nonce[:])
+
+	cipher_priv := secretbox.Seal(nil, c.private_bytes[:], &nonce, &secretKey)
+	full_priv := append(nonce[:], cipher_priv...)
+
+	//новый nonce
+	_, _ = rand.Read(nonce[:])
+
+	cipher_sign := secretbox.Seal(nil, c.signing_bytes[:], &nonce, &secretKey)
+	full_sign := append(nonce[:], cipher_sign...)
+
+	saltB64 := base64.StdEncoding.EncodeToString(salt)
+	privB64 := base64.StdEncoding.EncodeToString(full_priv)
+	signB64 := base64.StdEncoding.EncodeToString(full_sign)
+
+	kf := KeyFile{
+		Salt:        saltB64,
+		Private_key: privB64,
+		Signing_key: signB64,
+	}
+
+	jsonBytes, err := json.MarshalIndent(kf, "", " ")
+	if err != nil {
+		return err
+	}
+
+	if err := os.WriteFile("session.key", jsonBytes, 0600); err != nil {
+		return err
+	}
+	return nil
 }
 
 // декодит из base 64 и приводит в нормальные байты размером 32
@@ -138,11 +191,12 @@ func LoadKeys(c *Client, path string, password string) error {
 
 // регистрация
 func Rgister(c *Client, name string) error {
+	//генерим, кидаем запрос
 	return nil
 }
 
 // просто пинг сервера. можно проверять доступность
-func ping(c *Client) (string, error) {
+func Ping(c *Client) (string, error) {
 	resp, err := c.Http.Post(c.ServerUrl+"/ping", "application/json", nil)
 	if err != nil {
 		return "", err
@@ -157,9 +211,4 @@ func ping(c *Client) (string, error) {
 	}
 
 	return result.Status, nil
-}
-
-func register(c *Client) {
-	//генерим
-	//кидаем запрос на регу
 }
