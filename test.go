@@ -3,7 +3,7 @@ package main
 import "fmt"
 
 func main() {
-	password := "***"
+	password := "123"
 	path := "session.key"
 	client, err := NewClient("https://skam.su:10000")
 	if err != nil {
@@ -14,12 +14,9 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 	}
-
-	err = ChangeName(client, "razor1.0")
+	friends, err := GetFriends(client)
 	if err != nil {
 		fmt.Println(err)
 	}
-	fmt.Println(client.name)
-	users, err := SearchUser(client, "M")
-	fmt.Println(users)
+	fmt.Println(friends)
 }
