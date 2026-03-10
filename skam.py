@@ -166,8 +166,9 @@ def auth():
                 return token, user_id, priv_key, pub_key, sign_key, verif_key, name
             else:
                 print('Ошибка на сервере. Повтор через 15 секунд')
-                time.sleep(15)
                 print(resp.json().get('status'))
+                time.sleep(15)
+                
                 return auth()
         else:
             return register()
@@ -231,11 +232,10 @@ def get_friends(token: str):
         for i in range(len(friends)):
             print(f"[{i+1}] {friends[i].get('nickname')}")
         print('\n[0] Выход')
-        
         while True:
             choice = int(input('> '))
             if choice<=len(friends) and choice>0:
-                return int(friends[choice-1].get('friend_id'))
+                return int(friends[choice-1].get('id'))
             elif choice == 0 or choice == 00:
                 return 0
             else:
