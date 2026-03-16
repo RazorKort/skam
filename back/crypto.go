@@ -206,6 +206,7 @@ func DecryptMessage(msg *Message, friend User) error {
 	return nil
 }
 
+// шифрует сообщение, пишет в message.message
 func EncryptMessage(msg *Message, friend User) error {
 	var nonce [24]byte
 	_, err := rand.Read(nonce[:])
