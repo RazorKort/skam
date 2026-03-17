@@ -1,10 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"skam/back"
-	"skam/messages"
 	"skam/ui"
 
 	"gioui.org/app"
@@ -22,8 +20,10 @@ func main() {
 			app.Title("Skam"),
 			app.MinSize(unit.Dp(400), unit.Dp(600)),
 		)
-
-		err := RunApp(window)
+		appState := ui.NewApplication(window)
+		appState.KEY_PATH = KEY_PATH
+		appState.URL = URL
+		err := RunApp(appState)
 		if err != nil {
 			panic(err)
 		}
@@ -33,63 +33,43 @@ func main() {
 }
 
 // главный луп. даже слушает сообщения которые перекидываются от окон
-func RunApp(w *app.Window) error {
-	client, err := back.NewClient(URL)
+func RunApp(a *ui.Application) error {
+	var err error
+	a.Client, err = back.NewClient(a.URL)
 	if err != nil {
 		panic(err)
 	}
 
-	msgs := make(chan messages.Msg, 32)
+	a.Theme = ui.NewAppTheme()
 
-	//вот тут мы чекаем существует ли session.key и вызываем регу или ауууф
-	currentScreen := ui.NewLoginScreen(msgs)
-	th := ui.NewAppTheme()
+	if back.CheckPath(KEY_PATH) {
+		a.CurrentScreen = ui.NewLoginScreen(a.Msgs)
+	} else {
+		a.CurrentScreen = ui.NewRegisterScreen(a.Msgs)
+	}
 
 	var ops op.Ops
 	for {
 		select {
-		case msg := <-msgs:
-			HandleMessage(msg, currentScreen, client, msgs)
-			w.Invalidate()
+		case msg := <-a.Msgs:
+			a.HandleMessage(msg)
+			a.Window.Invalidate()
 		default:
-			switch e := w.Event().(type) {
+			switch e := a.Window.Event().(type) {
 			case app.DestroyEvent:
 				return e.Err
 			case app.FrameEvent:
 				gtx := app.NewContext(&ops, e)
-				currentScreen.Update(gtx)
-				currentScreen.Layout(gtx, th)
+				a.CurrentScreen.Update(gtx)
+				a.CurrentScreen.Layout(gtx, a.Theme)
+
+				if a.ShowError {
+					a.DrawError(gtx)
+				}
+
 				e.Frame(gtx.Ops)
 
 			}
-		}
-	}
-}
-
-func HandleMessage(msg messages.Msg, currentScreen interface{}, client *back.Client, msgs chan messages.Msg) {
-	switch m := msg.(type) {
-
-	// --- Навигация ---
-	case messages.NavigateToLogin:
-		//*currentScreen = ui.NewLogin(msgs, client)
-
-	case messages.NavigateToRegister:
-		//*currentScreen = ui.NewRegister(msgs, client)
-
-	case messages.LoginAttempt:
-		go func() {
-			fmt.Println(m.Password)
-			err := client.LoadKeys(KEY_PATH, m.Password)
-			if err != nil {
-				msgs <- messages.LoginFailed{}
-				panic(err)
-			}
-			msgs <- messages.LoginSuccess{}
-		}()
-
-	case messages.LoginSuccess:
-		if screen, ok := currentScreen.(*ui.LoginScreen); ok {
-			screen.IsLoading = false // ← сбрасываем при успехе
 		}
 	}
 }

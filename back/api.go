@@ -53,6 +53,7 @@ func NewClient(url string) (*Client, error) {
 }
 
 // регистрация
+// он сразу пишет в файл
 func (c *Client) Register(name string, password string) error {
 	c.name = name
 	//генерим priv pub

@@ -8,19 +8,6 @@ import (
 	"gioui.org/widget"
 )
 
-// LoginScreen holds the state for the login UI.
-type LoginScreen struct {
-	Password     widget.Editor
-	LoginButton  widget.Clickable
-	ImportKeyBtn widget.Clickable
-	RegisterBtn  widget.Clickable
-	inset        layout.Inset
-
-	msgs chan<- messages.Msg
-
-	IsLoading bool
-}
-
 // NewLoginScreen creates a new login screen with reasonable defaults.
 func NewLoginScreen(msgs chan<- messages.Msg) *LoginScreen {
 	var password widget.Editor
@@ -60,14 +47,20 @@ func (ls *LoginScreen) Layout(gtx layout.Context, th *AppTheme) layout.Dimension
 				return ls.inset.Layout(gtx, btn.Layout)
 			}),
 			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-				// Import key button (outlined)
-				btn := th.OutlinedButton(&ls.ImportKeyBtn, "Import key")
-				return ls.inset.Layout(gtx, btn.Layout)
-			}),
-			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-				// Registration button (outlined)
-				btn := th.OutlinedButton(&ls.RegisterBtn, "Register")
-				return ls.inset.Layout(gtx, btn.Layout)
+				return layout.Flex{
+					Axis:      layout.Horizontal,
+					Alignment: layout.Middle,
+					Spacing:   layout.SpaceAround,
+				}.Layout(gtx,
+					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+						btn := th.OutlinedButton(&ls.ImportKeyBtn, "Import key")
+						return ls.inset.Layout(gtx, btn.Layout)
+					}),
+					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+						btn := th.OutlinedButton(&ls.RegisterBtn, "Register")
+						return ls.inset.Layout(gtx, btn.Layout)
+					}),
+				)
 			}),
 		)
 	})
@@ -86,8 +79,9 @@ func (ls *LoginScreen) Update(gtx layout.Context) bool {
 
 	// Обработка кнопки регистрации
 	if ls.RegisterBtn.Clicked(gtx) {
-		ls.msgs <- messages.NavigateToRegister{}
 		changed = true
+		ls.msgs <- messages.NavigateToRegister{}
+
 	}
 
 	// // Обработка импорта ключа

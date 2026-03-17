@@ -129,6 +129,7 @@ func CheckPath(path string) bool {
 }
 
 // Грузим ключи из файла
+// сразу вызывает decrypt и decode
 func (c *Client) LoadKeys(path string, password string) error {
 	jsonBytes, err := os.ReadFile(path)
 	if err != nil {
