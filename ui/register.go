@@ -95,7 +95,7 @@ func (rs *RegisterScreen) Update(gtx layout.Context) bool {
 		}
 	}
 
-	// Обработка кнопки регистрации
+	// Обработка кнопки назад
 	if rs.BackBtn.Clicked(gtx) && !rs.IsLoading {
 		rs.msgs <- messages.NavigateToLogin{}
 		changed = true

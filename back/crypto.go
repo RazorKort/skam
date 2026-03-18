@@ -40,7 +40,7 @@ func DecryptKey(password string, salt string, bytes string) (*[32]byte, error) {
 
 	plaintext, ok := secretbox.Open(nil, chiper, &nonce, &key)
 	if !ok {
-		return nil, fmt.Errorf("Decryption failed")
+		return nil, fmt.Errorf("Decryption failed. Probably wrong password")
 	}
 	if len(plaintext) != 32 {
 		return nil, fmt.Errorf("key != 32 bytes")
@@ -51,7 +51,7 @@ func DecryptKey(password string, salt string, bytes string) (*[32]byte, error) {
 }
 
 // шифрует байтики и пишет в файл
-func EncryptKey(password string, c *Client) error {
+func (c *Client) EncryptKey(password string) error {
 	//генерим соль
 	salt := make([]byte, 16)
 	_, err := rand.Read(salt)

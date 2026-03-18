@@ -17,6 +17,7 @@ type HideError struct{ Msg }
 type NavigateToLogin struct{ Msg }
 type NavigateToRegister struct{ Msg }
 type NavigateToMain struct{ Msg }
+type NavigateToImport struct{ Msg }
 
 //статусы логина
 type LoginAttempt struct {
@@ -34,3 +35,11 @@ type RegisterAttempt struct {
 }
 type RegisterSuccess struct{ Msg }
 type RegisterFailed struct{ Msg }
+
+type ImportAttempt struct {
+	Path     string
+	Password string
+	Msg
+}
+type ImportSuccess struct{ Msg }
+type ImportFailed struct{ Msg }

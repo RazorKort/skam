@@ -72,7 +72,7 @@ func (c *Client) Register(name string, password string) error {
 	c.private_bytes = *private_b
 	c.signing_bytes = seed_b
 	//сразу пишем в файл
-	err = EncryptKey(password, c)
+	err = c.EncryptKey(password)
 	if err != nil {
 		return err
 	}

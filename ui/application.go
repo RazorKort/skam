@@ -3,6 +3,7 @@ package ui
 import (
 	"image"
 	"image/color"
+	"skam/back"
 	"skam/messages"
 
 	"gioui.org/app"
@@ -37,7 +38,7 @@ func (a *Application) DrawError(gtx layout.Context) {
 
 		// Центрированный попап
 		layout.Stacked(func(gtx layout.Context) layout.Dimensions {
-			const popupW, popupH = 300, 200
+			const popupW, popupH = 400, 200
 			popupSize := image.Pt(popupW, popupH)
 			// Фиксируем размер попапа
 			gtx.Constraints = layout.Exact(popupSize)
@@ -87,6 +88,8 @@ func (a *Application) HandleMessage(msg messages.Msg) {
 
 	case messages.NavigateToRegister:
 		a.CurrentScreen = NewRegisterScreen(a.Msgs)
+	case messages.NavigateToImport:
+		a.CurrentScreen = NewImportScreeen(a.Msgs)
 
 	case messages.LoginAttempt:
 		go func() {
@@ -94,8 +97,9 @@ func (a *Application) HandleMessage(msg messages.Msg) {
 			if err != nil {
 				a.Msgs <- messages.LoginFailed{}
 				a.Msgs <- messages.ShowError{ErrorMessage: err.Error()}
+			} else {
+				a.Msgs <- messages.LoginSuccess{}
 			}
-			a.Msgs <- messages.LoginSuccess{}
 		}()
 
 	case messages.RegisterAttempt:
@@ -103,16 +107,63 @@ func (a *Application) HandleMessage(msg messages.Msg) {
 			err := a.Client.Register(m.Name, m.Password)
 			if err != nil {
 				a.Msgs <- messages.RegisterFailed{}
-				a.Msgs <- messages.ShowError{}
+				a.Msgs <- messages.ShowError{ErrorMessage: err.Error()}
+
+			} else {
+				a.Msgs <- messages.RegisterSuccess{}
 			}
-			a.Msgs <- messages.RegisterFailed{}
 		}()
 
+	case messages.ImportAttempt:
+		go func() {
+			status := back.CheckPath(m.Path)
+			if !status {
+				a.Msgs <- messages.ImportFailed{}
+				a.Msgs <- messages.ShowError{ErrorMessage: "No such file"}
+				return
+			}
+			err := a.Client.LoadKeys(m.Path, "")
+			if err != nil {
+				a.Msgs <- messages.ImportFailed{}
+				a.Msgs <- messages.ShowError{ErrorMessage: err.Error()}
+				return
+			}
+			err = a.Client.EncryptKey(m.Password)
+			if err != nil {
+				a.Msgs <- messages.ImportFailed{}
+				a.Msgs <- messages.ShowError{ErrorMessage: err.Error()}
+				return
+			}
+			a.Msgs <- messages.ImportSuccess{}
+
+		}()
+	//navigate to main screen
 	case messages.LoginSuccess:
 		if screen, ok := (a.CurrentScreen).(*LoginScreen); ok {
 			screen.IsLoading = false
+			a.Msgs <- messages.NavigateToMain{}
 		}
 	case messages.RegisterSuccess:
+		if screen, ok := (a.CurrentScreen).(*LoginScreen); ok {
+			screen.IsLoading = false
+			a.Msgs <- messages.NavigateToMain{}
+		}
+	case messages.ImportSuccess:
+		if screen, ok := (a.CurrentScreen).(*LoginScreen); ok {
+			screen.IsLoading = false
+			a.Msgs <- messages.NavigateToMain{}
+		}
+
+		//drop loading flag
+	case messages.LoginFailed:
+		if screen, ok := (a.CurrentScreen).(*LoginScreen); ok {
+			screen.IsLoading = false
+		}
+	case messages.RegisterFailed:
+		if screen, ok := (a.CurrentScreen).(*LoginScreen); ok {
+			screen.IsLoading = false
+		}
+	case messages.ImportFailed:
 		if screen, ok := (a.CurrentScreen).(*LoginScreen); ok {
 			screen.IsLoading = false
 		}

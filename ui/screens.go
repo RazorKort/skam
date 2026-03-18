@@ -55,3 +55,15 @@ type RegisterScreen struct {
 	IsLoading     bool
 	paswordsMatch bool
 }
+
+type ImportScreen struct {
+	BackBtn       widget.Clickable
+	Path          widget.Editor
+	Password      widget.Editor
+	Password2     widget.Editor
+	ImportKeyBtn  widget.Clickable
+	msgs          chan<- messages.Msg
+	IsLoading     bool
+	inset         layout.Inset
+	paswordsMatch bool
+}

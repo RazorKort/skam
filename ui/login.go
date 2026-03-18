@@ -69,7 +69,7 @@ func (ls *LoginScreen) Layout(gtx layout.Context, th *AppTheme) layout.Dimension
 func (ls *LoginScreen) Update(gtx layout.Context) bool {
 	changed := false
 	// Обработка кнопки логина
-	if ls.LoginButton.Clicked(gtx) && !ls.IsLoading {
+	if ls.LoginButton.Clicked(gtx) && !ls.IsLoading && ls.Password.Text() != "" {
 		ls.IsLoading = true
 		changed = true
 		ls.msgs <- messages.LoginAttempt{
@@ -84,11 +84,11 @@ func (ls *LoginScreen) Update(gtx layout.Context) bool {
 
 	}
 
-	// // Обработка импорта ключа
-	// if ls.ImportKeyBtn.Clicked(gtx) {
-	//     ls.msgs <- messages.NavigateToImport{}
-	//     changed = true
-	// }
+	//Обработка импорта ключа
+	if ls.ImportKeyBtn.Clicked(gtx) {
+		ls.msgs <- messages.NavigateToImport{}
+		changed = true
+	}
 
 	return changed
 }
