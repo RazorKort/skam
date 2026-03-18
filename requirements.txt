@@ -1,6 +1,0 @@
-prompt_toolkit
-rel
-requests
-websocket-client
-PyNaCl
-argon2-cffi
