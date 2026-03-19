@@ -132,32 +132,53 @@ func (c *Client) Auth() error {
 	return nil
 }
 
-// получить список друзей массив структур user[]
-func (c *Client) GetFriends() ([]User, error) {
-	body := Body{
-		Token: c.token,
-	}
+// получить список друзей, добавить в client
+func (c *Client) GetFriends() error {
+	body := Body{Token: c.token}
 
 	result, err := c.HttpPost("/friends", body)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
+	// Инициализация если нужно
+	if c.FriendsById == nil {
+		c.FriendsById = make(map[int]*User)
+	}
+
+	// Для каждого нового друга
 	for i := range result.Friends {
+		// Декодируем ключи
 		public_bytes, err := DecodeKey(result.Friends[i].Public_key)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		result.Friends[i].Public_bytes = *public_bytes
 
 		verify_bytes, err := DecodeKey(result.Friends[i].Verify_key)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		result.Friends[i].Verify_bytes = *verify_bytes
+
+		// Проверяем, есть ли уже такой друг
+		if existing, exists := c.FriendsById[result.Friends[i].Id]; exists {
+			// Обновляем существующего
+			existing.Name = result.Friends[i].Name
+			existing.Public_key = result.Friends[i].Public_key
+			existing.Verify_key = result.Friends[i].Verify_key
+			existing.Public_bytes = result.Friends[i].Public_bytes
+			existing.Verify_bytes = result.Friends[i].Verify_bytes
+			// Shared_key не трогаем, он локальный
+		} else {
+			// Добавляем нового
+			newFriend := &result.Friends[i]             // берём указатель на нового друга
+			c.Friends = append(c.Friends, (*newFriend)) // добавляем в слайс
+			c.FriendsById[newFriend.Id] = newFriend     // добавляем в карту
+		}
 	}
 
-	return result.Friends, nil
+	return nil
 }
 
 // добавление друга
@@ -229,17 +250,20 @@ func (c *Client) GetPublicKey(target_id int) (*[32]byte, error) {
 }
 
 // грузим все сообщения. надо бы ограничить...
-func (c *Client) LoadMessages(target_id int) (*[]Message, error) {
+// когда я сделаю так, чтобы грузилась только часть сообщений...
+// я обязательно уберу перезапись сообщений...
+func (c *Client) LoadMessages(target_id int) error {
 	body := Body{
 		Token:     c.token,
 		Target_id: target_id,
 	}
 	result, err := c.HttpPost("/messages", body)
 	if err != nil {
-		return nil, err
+		return err
 	}
+	c.FriendsById[target_id].Messages = result.Messages
 
-	return &result.Messages, nil
+	return nil
 }
 
 // ну давай, скажи что непонятно здесь

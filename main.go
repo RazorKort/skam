@@ -18,7 +18,7 @@ func main() {
 		window := new(app.Window)
 		window.Option(
 			app.Title("Skam"),
-			app.MinSize(unit.Dp(400), unit.Dp(600)),
+			app.MinSize(unit.Dp(385), unit.Dp(600)),
 		)
 		appState := ui.NewApplication(window)
 		appState.KEY_PATH = KEY_PATH

@@ -28,7 +28,6 @@ type Screen interface {
 	Layout(gtx layout.Context, th *AppTheme) layout.Dimensions
 }
 
-// LoginScreen holds the state for the login UI.
 type LoginScreen struct {
 	Password     widget.Editor
 	LoginButton  widget.Clickable
@@ -66,4 +65,13 @@ type ImportScreen struct {
 	IsLoading     bool
 	inset         layout.Inset
 	paswordsMatch bool
+}
+
+type MainScreen struct {
+	ProfileBtn widget.Clickable
+	Message    widget.Editor
+	SendBtn    widget.Clickable
+	Search     widget.Editor
+	SearchBtn  widget.Clickable
+	inset      layout.Inset
 }

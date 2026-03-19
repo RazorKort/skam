@@ -13,6 +13,8 @@ type Client struct {
 	private_bytes [32]byte
 	signing_bytes [32]byte
 	token         string
+	Friends       []User
+	FriendsById   map[int]*User
 }
 
 // я ебал это делать отдельными структурами
@@ -38,15 +40,6 @@ type Body struct {
 	New_name       string    `json:"new_name,omitempty"`
 }
 
-type Message struct {
-	Name        string `json:"name"`
-	Sender_id   int    `json:"sender_id"`
-	Receiver_id int    `json:"receiver_id"`
-	Message     string `json:"message"`
-	Created_at  string `json:"created_at,omitempty"`
-	Plaintext   string
-}
-
 type User struct {
 	Id           int    `json:"id,omitempty"`
 	Name         string `json:"nickname"`
@@ -55,6 +48,16 @@ type User struct {
 	Public_bytes [32]byte
 	Verify_bytes [32]byte
 	Shared_key   [32]byte
+	Messages     []Message
+}
+
+type Message struct {
+	Name        string `json:"name"`
+	Sender_id   int    `json:"sender_id"`
+	Receiver_id int    `json:"receiver_id"`
+	Message     string `json:"message"`
+	Created_at  string `json:"created_at,omitempty"`
+	Plaintext   string
 }
 
 type KeyFile struct {

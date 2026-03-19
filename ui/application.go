@@ -90,6 +90,11 @@ func (a *Application) HandleMessage(msg messages.Msg) {
 		a.CurrentScreen = NewRegisterScreen(a.Msgs)
 	case messages.NavigateToImport:
 		a.CurrentScreen = NewImportScreeen(a.Msgs)
+	case messages.NavigateToMain:
+		//new ws connection
+		//load friends and messages
+		//load messages only when clicked on friend and check if loaded
+		a.CurrentScreen = NewMainScreen(a.Msgs)
 
 	case messages.LoginAttempt:
 		go func() {
@@ -101,7 +106,6 @@ func (a *Application) HandleMessage(msg messages.Msg) {
 				a.Msgs <- messages.LoginSuccess{}
 			}
 		}()
-
 	case messages.RegisterAttempt:
 		go func() {
 			err := a.Client.Register(m.Name, m.Password)
@@ -113,7 +117,6 @@ func (a *Application) HandleMessage(msg messages.Msg) {
 				a.Msgs <- messages.RegisterSuccess{}
 			}
 		}()
-
 	case messages.ImportAttempt:
 		go func() {
 			status := back.CheckPath(m.Path)
@@ -137,7 +140,8 @@ func (a *Application) HandleMessage(msg messages.Msg) {
 			a.Msgs <- messages.ImportSuccess{}
 
 		}()
-	//navigate to main screen
+
+		//navigate to main screen
 	case messages.LoginSuccess:
 		if screen, ok := (a.CurrentScreen).(*LoginScreen); ok {
 			screen.IsLoading = false
