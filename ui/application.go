@@ -1,10 +1,10 @@
 package ui
 
 import (
+	"fmt"
 	"image"
 	"image/color"
 	"skam/back"
-	"skam/messages"
 
 	"gioui.org/app"
 	"gioui.org/io/event"
@@ -19,7 +19,7 @@ import (
 func NewApplication(w *app.Window) *Application {
 	return &Application{
 		Window: w,
-		Msgs:   make(chan messages.Msg, 32),
+		Msgs:   make(chan Msg, 32),
 	}
 }
 
@@ -71,105 +71,135 @@ func (a *Application) DrawError(gtx layout.Context) {
 		}),
 	)
 }
-func (a *Application) HandleMessage(msg messages.Msg) {
+func (a *Application) HandleMessage(msg Msg) {
 	switch m := msg.(type) {
 
-	case messages.ShowError:
+	case ShowError:
 		a.ErrorMsg = m.ErrorMessage
 		a.ShowError = true
 
-	case messages.HideError:
+	case HideError:
 		a.ShowError = false
 		a.ErrorMsg = ""
 
 	// --- Навигация ---
-	case messages.NavigateToLogin:
+	case NavigateToLogin:
 		a.CurrentScreen = NewLoginScreen(a.Msgs)
 
-	case messages.NavigateToRegister:
+	case NavigateToRegister:
 		a.CurrentScreen = NewRegisterScreen(a.Msgs)
-	case messages.NavigateToImport:
+	case NavigateToImport:
 		a.CurrentScreen = NewImportScreeen(a.Msgs)
-	case messages.NavigateToMain:
-		//new ws connection
-		//load friends and messages
-		//load messages only when clicked on friend and check if loaded
-		a.CurrentScreen = NewMainScreen(a.Msgs)
+	case NavigateToMain:
+		a.CurrentScreen = NewMainScreen(a.Msgs, a.Client)
 
-	case messages.LoginAttempt:
+	case LoginAttempt:
 		go func() {
 			err := a.Client.LoadKeys(a.KEY_PATH, m.Password)
 			if err != nil {
-				a.Msgs <- messages.LoginFailed{}
-				a.Msgs <- messages.ShowError{ErrorMessage: err.Error()}
-			} else {
-				a.Msgs <- messages.LoginSuccess{}
+				a.Msgs <- LoginFailed{}
+				a.Msgs <- ShowError{ErrorMessage: err.Error()}
+				return
 			}
+			if ok := a.AuthandLoad(); ok {
+				a.Msgs <- LoginSuccess{}
+				return
+			}
+			a.Msgs <- LoginFailed{}
 		}()
-	case messages.RegisterAttempt:
+	case RegisterAttempt:
 		go func() {
 			err := a.Client.Register(m.Name, m.Password)
 			if err != nil {
-				a.Msgs <- messages.RegisterFailed{}
-				a.Msgs <- messages.ShowError{ErrorMessage: err.Error()}
-
-			} else {
-				a.Msgs <- messages.RegisterSuccess{}
+				a.Msgs <- RegisterFailed{}
+				a.Msgs <- ShowError{ErrorMessage: err.Error()}
+				return
 			}
+			if ok := a.AuthandLoad(); ok {
+				a.Msgs <- RegisterSuccess{}
+				return
+			}
+			a.Msgs <- RegisterFailed{}
 		}()
-	case messages.ImportAttempt:
+	case ImportAttempt:
 		go func() {
 			status := back.CheckPath(m.Path)
 			if !status {
-				a.Msgs <- messages.ImportFailed{}
-				a.Msgs <- messages.ShowError{ErrorMessage: "No such file"}
+				a.Msgs <- ImportFailed{}
+				a.Msgs <- ShowError{ErrorMessage: "No such file"}
 				return
 			}
 			err := a.Client.LoadKeys(m.Path, "")
 			if err != nil {
-				a.Msgs <- messages.ImportFailed{}
-				a.Msgs <- messages.ShowError{ErrorMessage: err.Error()}
+				a.Msgs <- ImportFailed{}
+				a.Msgs <- ShowError{ErrorMessage: err.Error()}
 				return
 			}
 			err = a.Client.EncryptKey(m.Password)
 			if err != nil {
-				a.Msgs <- messages.ImportFailed{}
-				a.Msgs <- messages.ShowError{ErrorMessage: err.Error()}
+				a.Msgs <- ImportFailed{}
+				a.Msgs <- ShowError{ErrorMessage: err.Error()}
 				return
 			}
-			a.Msgs <- messages.ImportSuccess{}
+			if ok := a.AuthandLoad(); ok {
+				a.Msgs <- ImportSuccess{}
+				return
+			}
+			a.Msgs <- ImportFailed{}
 
 		}()
 
 		//navigate to main screen
-	case messages.LoginSuccess:
+	case LoginSuccess:
 		if screen, ok := (a.CurrentScreen).(*LoginScreen); ok {
 			screen.IsLoading = false
-			a.Msgs <- messages.NavigateToMain{}
+			a.Msgs <- NavigateToMain{}
 		}
-	case messages.RegisterSuccess:
-		if screen, ok := (a.CurrentScreen).(*LoginScreen); ok {
+	case RegisterSuccess:
+		if screen, ok := (a.CurrentScreen).(*RegisterScreen); ok {
 			screen.IsLoading = false
-			a.Msgs <- messages.NavigateToMain{}
+			a.Msgs <- NavigateToMain{}
 		}
-	case messages.ImportSuccess:
+	case ImportSuccess:
+		if screen, ok := (a.CurrentScreen).(*ImportScreen); ok {
+			screen.IsLoading = false
+			a.Msgs <- NavigateToMain{}
+		}
+		//drop loading flag
+	case LoginFailed:
 		if screen, ok := (a.CurrentScreen).(*LoginScreen); ok {
 			screen.IsLoading = false
-			a.Msgs <- messages.NavigateToMain{}
+		}
+	case RegisterFailed:
+		if screen, ok := (a.CurrentScreen).(*RegisterScreen); ok {
+			screen.IsLoading = false
+		}
+	case ImportFailed:
+		if screen, ok := (a.CurrentScreen).(*ImportScreen); ok {
+			screen.IsLoading = false
 		}
 
-		//drop loading flag
-	case messages.LoginFailed:
-		if screen, ok := (a.CurrentScreen).(*LoginScreen); ok {
+	case FriendClicked:
+		fmt.Println("clicked")
+		if screen, ok := (a.CurrentScreen).(*MainScreen); ok {
 			screen.IsLoading = false
 		}
-	case messages.RegisterFailed:
-		if screen, ok := (a.CurrentScreen).(*LoginScreen); ok {
-			screen.IsLoading = false
-		}
-	case messages.ImportFailed:
-		if screen, ok := (a.CurrentScreen).(*LoginScreen); ok {
-			screen.IsLoading = false
-		}
+
+	}
+}
+
+func (a *Application) AuthandLoad() bool {
+	//new ws connection
+	err := a.Client.Auth()
+	if err != nil {
+		a.Msgs <- ShowError{ErrorMessage: err.Error()}
+		return false
+	}
+	err = a.Client.GetFriends()
+	if err != nil {
+		a.Msgs <- ShowError{ErrorMessage: err.Error()}
+		return false
+	} else {
+		return true
 	}
 }

@@ -2,7 +2,6 @@ package ui
 
 import (
 	"skam/back"
-	"skam/messages"
 
 	"gioui.org/app"
 	"gioui.org/layout"
@@ -12,7 +11,7 @@ import (
 type Application struct {
 	Window *app.Window
 
-	Msgs          chan messages.Msg
+	Msgs          chan Msg
 	CurrentScreen Screen
 	Client        *back.Client
 	Theme         *AppTheme
@@ -35,7 +34,7 @@ type LoginScreen struct {
 	RegisterBtn  widget.Clickable
 	inset        layout.Inset
 
-	msgs chan<- messages.Msg
+	msgs chan<- Msg
 
 	IsLoading bool
 }
@@ -49,7 +48,7 @@ type RegisterScreen struct {
 
 	inset layout.Inset
 
-	msgs chan<- messages.Msg
+	msgs chan<- Msg
 
 	IsLoading     bool
 	paswordsMatch bool
@@ -61,17 +60,23 @@ type ImportScreen struct {
 	Password      widget.Editor
 	Password2     widget.Editor
 	ImportKeyBtn  widget.Clickable
-	msgs          chan<- messages.Msg
+	msgs          chan<- Msg
 	IsLoading     bool
 	inset         layout.Inset
 	paswordsMatch bool
 }
 
 type MainScreen struct {
-	ProfileBtn widget.Clickable
-	Message    widget.Editor
-	SendBtn    widget.Clickable
-	Search     widget.Editor
-	SearchBtn  widget.Clickable
-	inset      layout.Inset
+	Client           *back.Client
+	FriendsList      layout.List
+	friendClickables map[int]*widget.Clickable
+	SelectedFriend   *back.User
+	ProfileBtn       widget.Clickable
+	Message          widget.Editor
+	SendBtn          widget.Clickable
+	Search           widget.Editor
+	SearchBtn        widget.Clickable
+	inset            layout.Inset
+	IsLoading        bool
+	msgs             chan<- Msg
 }

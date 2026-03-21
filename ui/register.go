@@ -1,14 +1,12 @@
 package ui
 
 import (
-	"skam/messages"
-
 	"gioui.org/layout"
 	"gioui.org/unit"
 	"gioui.org/widget"
 )
 
-func NewRegisterScreen(msgs chan<- messages.Msg) *RegisterScreen {
+func NewRegisterScreen(msgs chan<- Msg) *RegisterScreen {
 	var name widget.Editor
 	name.SingleLine = true
 
@@ -51,20 +49,28 @@ func (rs *RegisterScreen) Layout(gtx layout.Context, th *AppTheme) layout.Dimens
 				return rs.inset.Layout(gtx, title.Layout)
 			}),
 			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-				// Password input
-				editor := th.Input(&rs.Name, "Enter your Name")
-				return rs.inset.Layout(gtx, editor.Layout)
+				return layout.Flex{
+					Axis:      layout.Vertical,
+					Alignment: layout.Start,
+				}.Layout(gtx,
+					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+						// Password input
+						editor := th.Input(&rs.Name, "Enter your Name")
+						return rs.inset.Layout(gtx, editor.Layout)
+					}),
+					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+						// Password input
+						editor := th.Input(&rs.Password, "Password")
+						return rs.inset.Layout(gtx, editor.Layout)
+					}),
+					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+						// Password input
+						editor := th.Input(&rs.ConfirmPassword, "Confirm Password")
+						return rs.inset.Layout(gtx, editor.Layout)
+					}),
+				)
 			}),
-			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-				// Password input
-				editor := th.Input(&rs.Password, "Password")
-				return rs.inset.Layout(gtx, editor.Layout)
-			}),
-			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-				// Password input
-				editor := th.Input(&rs.ConfirmPassword, "Confirm Password")
-				return rs.inset.Layout(gtx, editor.Layout)
-			}),
+
 			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 				// Login button (primary)
 				btn := th.Button(&rs.RegisterBtn, "Register")
@@ -89,7 +95,7 @@ func (rs *RegisterScreen) Update(gtx layout.Context) bool {
 	if rs.RegisterBtn.Clicked(gtx) && !rs.IsLoading && rs.paswordsMatch {
 		rs.IsLoading = true
 		changed = true
-		rs.msgs <- messages.RegisterAttempt{
+		rs.msgs <- RegisterAttempt{
 			Name:     rs.Name.Text(),
 			Password: pswd,
 		}
@@ -97,7 +103,7 @@ func (rs *RegisterScreen) Update(gtx layout.Context) bool {
 
 	// Обработка кнопки назад
 	if rs.BackBtn.Clicked(gtx) && !rs.IsLoading {
-		rs.msgs <- messages.NavigateToLogin{}
+		rs.msgs <- NavigateToLogin{}
 		changed = true
 	}
 

@@ -1,14 +1,12 @@
 package ui
 
 import (
-	"skam/messages"
-
 	"gioui.org/layout"
 	"gioui.org/unit"
 	"gioui.org/widget"
 )
 
-func NewImportScreeen(msgs chan<- messages.Msg) *ImportScreen {
+func NewImportScreeen(msgs chan<- Msg) *ImportScreen {
 	var pathKey widget.Editor
 	pathKey.SingleLine = true
 
@@ -82,12 +80,12 @@ func (is *ImportScreen) Update(gtx layout.Context) bool {
 	}
 
 	if is.BackBtn.Clicked(gtx) && !is.IsLoading {
-		is.msgs <- messages.NavigateToLogin{}
+		is.msgs <- NavigateToLogin{}
 		changed = true
 	}
 
 	if is.ImportKeyBtn.Clicked(gtx) && !is.IsLoading && is.paswordsMatch {
-		is.msgs <- messages.ImportAttempt{
+		is.msgs <- ImportAttempt{
 			Path:     is.Path.Text(),
 			Password: pswd,
 		}

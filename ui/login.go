@@ -1,15 +1,13 @@
 package ui
 
 import (
-	"skam/messages"
-
 	"gioui.org/layout"
 	"gioui.org/unit"
 	"gioui.org/widget"
 )
 
 // NewLoginScreen creates a new login screen with reasonable defaults.
-func NewLoginScreen(msgs chan<- messages.Msg) *LoginScreen {
+func NewLoginScreen(msgs chan<- Msg) *LoginScreen {
 	var password widget.Editor
 	password.SingleLine = true
 	password.Mask = '*'
@@ -72,7 +70,7 @@ func (ls *LoginScreen) Update(gtx layout.Context) bool {
 	if ls.LoginButton.Clicked(gtx) && !ls.IsLoading && ls.Password.Text() != "" {
 		ls.IsLoading = true
 		changed = true
-		ls.msgs <- messages.LoginAttempt{
+		ls.msgs <- LoginAttempt{
 			Password: ls.Password.Text(),
 		}
 	}
@@ -80,13 +78,13 @@ func (ls *LoginScreen) Update(gtx layout.Context) bool {
 	// Обработка кнопки регистрации
 	if ls.RegisterBtn.Clicked(gtx) {
 		changed = true
-		ls.msgs <- messages.NavigateToRegister{}
+		ls.msgs <- NavigateToRegister{}
 
 	}
 
 	//Обработка импорта ключа
 	if ls.ImportKeyBtn.Clicked(gtx) {
-		ls.msgs <- messages.NavigateToImport{}
+		ls.msgs <- NavigateToImport{}
 		changed = true
 	}
 
