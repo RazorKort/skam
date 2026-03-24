@@ -51,4 +51,12 @@ type ImportAttempt struct {
 type ImportSuccess struct{ Msg }
 type ImportFailed struct{ Msg }
 
-type FriendClicked struct{ Msg }
+type FriendClicked struct {
+	Msg
+}
+type ShowDialog struct{ Msg }
+
+type SendMessage struct {
+	Text string
+	Msg
+}

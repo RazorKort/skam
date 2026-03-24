@@ -6,15 +6,16 @@ import (
 )
 
 type Client struct {
-	id            int
-	name          string
-	ServerUrl     string
-	Http          *http.Client
-	private_bytes [32]byte
-	signing_bytes [32]byte
-	token         string
-	Friends       []User
-	FriendsById   map[int]*User
+	Id             int
+	name           string
+	ServerUrl      string
+	Http           *http.Client
+	private_bytes  [32]byte
+	signing_bytes  [32]byte
+	token          string
+	Friends        []User
+	FriendsById    map[int]int
+	SelectedFriend *User
 }
 
 // я ебал это делать отдельными структурами
@@ -49,14 +50,16 @@ type User struct {
 	Verify_bytes [32]byte
 	Shared_key   [32]byte
 	Messages     []Message
+	Loaded       bool
 }
 
 type Message struct {
+	Id          int    `json:"id"`
 	Name        string `json:"name"`
 	Sender_id   int    `json:"sender_id"`
 	Receiver_id int    `json:"receiver_id"`
 	Message     string `json:"message"`
-	Created_at  string `json:"created_at,omitempty"`
+	Created_at  int    `json:"created_at,omitempty"`
 	Plaintext   string
 }
 

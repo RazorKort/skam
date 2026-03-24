@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"sort"
 
 	"crypto/rand"
 	"net/http"
@@ -36,10 +37,6 @@ func (c *Client) HttpPost(path string, body Body) (*Body, error) {
 
 	if result.Status != "ok" {
 		return nil, fmt.Errorf("server error: %s", result.Detail)
-	}
-	//проверка только для одной функции. мде...
-	if result.Status == "none" {
-		return nil, fmt.Errorf("no messages")
 	}
 	return &result, nil
 }
@@ -90,7 +87,7 @@ func (c *Client) Register(name string, password string) error {
 	}
 
 	c.token = result.Token
-	c.id = result.Id
+	c.Id = result.Id
 	return nil
 }
 
@@ -127,7 +124,7 @@ func (c *Client) Auth() error {
 	}
 
 	c.token = result.Token
-	c.id = result.Id
+	c.Id = result.Id
 	c.name = result.Name
 	return nil
 }
@@ -143,7 +140,7 @@ func (c *Client) GetFriends() error {
 
 	// Инициализация если нужно
 	if c.FriendsById == nil {
-		c.FriendsById = make(map[int]*User)
+		c.FriendsById = make(map[int]int)
 	}
 
 	// Для каждого нового друга
@@ -161,20 +158,23 @@ func (c *Client) GetFriends() error {
 		}
 		result.Friends[i].Verify_bytes = *verify_bytes
 
+		shared := c.ComputeShared(result.Friends[i])
+		result.Friends[i].Shared_key = shared
+
 		// Проверяем, есть ли уже такой друг
-		if existing, exists := c.FriendsById[result.Friends[i].Id]; exists {
-			// Обновляем существующего
-			existing.Name = result.Friends[i].Name
-			existing.Public_key = result.Friends[i].Public_key
-			existing.Verify_key = result.Friends[i].Verify_key
-			existing.Public_bytes = result.Friends[i].Public_bytes
-			existing.Verify_bytes = result.Friends[i].Verify_bytes
-			// Shared_key не трогаем, он локальный
+		if idx, exists := c.FriendsById[result.Friends[i].Id]; exists {
+			// обновляем существующего друга по индексу
+			c.Friends[idx].Name = result.Friends[i].Name
+			c.Friends[idx].Public_key = result.Friends[i].Public_key
+			c.Friends[idx].Verify_key = result.Friends[i].Verify_key
+			c.Friends[idx].Public_bytes = result.Friends[i].Public_bytes
+			c.Friends[idx].Verify_bytes = result.Friends[i].Verify_bytes
+			c.Friends[idx].Shared_key = result.Friends[i].Shared_key
+
 		} else {
-			// Добавляем нового
-			newFriend := &result.Friends[i]             // берём указатель на нового друга
-			c.Friends = append(c.Friends, (*newFriend)) // добавляем в слайс
-			c.FriendsById[newFriend.Id] = newFriend     // добавляем в карту
+			// добавляем нового
+			c.Friends = append(c.Friends, result.Friends[i])
+			c.FriendsById[result.Friends[i].Id] = len(c.Friends) - 1
 		}
 	}
 
@@ -251,7 +251,6 @@ func (c *Client) GetPublicKey(target_id int) (*[32]byte, error) {
 
 // грузим все сообщения. надо бы ограничить...
 // когда я сделаю так, чтобы грузилась только часть сообщений...
-// я обязательно уберу перезапись сообщений...
 func (c *Client) LoadMessages(target_id int) error {
 	body := Body{
 		Token:     c.token,
@@ -261,7 +260,36 @@ func (c *Client) LoadMessages(target_id int) error {
 	if err != nil {
 		return err
 	}
-	c.FriendsById[target_id].Messages = result.Messages
+
+	idx, ok := c.FriendsById[target_id]
+	if !ok {
+		return fmt.Errorf("Friend not found")
+	}
+
+	// Создаем карту существующих ID
+	//удаляем сообщения с id -1
+	existingMessages := make(map[int]bool)
+	j := 0
+	for i, msg := range c.Friends[idx].Messages {
+		if c.Friends[idx].Messages[i].Id != -1 {
+			c.Friends[idx].Messages[j] = c.Friends[idx].Messages[i]
+			existingMessages[msg.Id] = true
+			j++
+		}
+	}
+	c.Friends[idx].Messages = c.Friends[idx].Messages[:j]
+
+	// Добавляем новые сообщения
+	for i := range result.Messages {
+		if !existingMessages[result.Messages[i].Id] {
+			c.Friends[idx].Messages = append(c.Friends[idx].Messages, result.Messages[i])
+		}
+	}
+
+	// Сортируем сообщения по timestamp
+	sort.Slice(c.Friends[idx].Messages, func(i, j int) bool {
+		return c.Friends[idx].Messages[i].Created_at < c.Friends[idx].Messages[j].Created_at
+	})
 
 	return nil
 }

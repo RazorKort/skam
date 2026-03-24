@@ -173,17 +173,19 @@ func (c *Client) LoadKeys(path string, password string) error {
 }
 
 // вычисляем shared key для симметричного шифрования
-func (c *Client) ComputeShared(friend *User) error {
+func (c *Client) ComputeShared(friend User) [32]byte {
 	var shared [32]byte
 	box.Precompute(&shared, &friend.Public_bytes, &c.private_bytes)
+	//я жаловалася на compute shared? забейте это говно вообще не возвращает ошибок
+	return shared
 
-	friend.Shared_key = shared
-
-	return nil
 }
 
 // дешифровка сообщения. записывает в message.plaintext
 func DecryptMessage(msg *Message, friend User) error {
+	if msg.Plaintext != "" {
+		return nil
+	}
 	Chiphertext, err := base64.StdEncoding.DecodeString(msg.Message)
 	if err != nil {
 		return err

@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"fmt"
 	"image"
 	"image/color"
 	"skam/back"
@@ -180,16 +179,39 @@ func (a *Application) HandleMessage(msg Msg) {
 		}
 
 	case FriendClicked:
-		fmt.Println("clicked")
-		if screen, ok := (a.CurrentScreen).(*MainScreen); ok {
-			screen.IsLoading = false
-		}
+		go func() {
+			if screen, ok := (a.CurrentScreen).(*MainScreen); ok {
+				if !a.Client.SelectedFriend.Loaded {
+					err := a.Client.LoadMessages(a.Client.SelectedFriend.Id)
+					if err != nil {
+						screen.IsLoading = false
+						a.Client.SelectedFriend.Loaded = true
+						a.Msgs <- ShowError{ErrorMessage: err.Error()}
+						return
+					}
+				}
+				for i := range a.Client.SelectedFriend.Messages {
+					err := back.DecryptMessage(&a.Client.SelectedFriend.Messages[i], *a.Client.SelectedFriend)
+					if err != nil {
+						screen.IsLoading = false
+						a.Msgs <- ShowError{ErrorMessage: err.Error()}
+						return
+					}
+				}
+				screen.MessagesList.Position.First = len(a.Client.SelectedFriend.Messages) - 1
+				screen.IsLoading = false
+			}
+		}()
 
+	case SendMessage:
+		go func() {
+			//send to ws
+		}()
 	}
 }
 
 func (a *Application) AuthandLoad() bool {
-	//new ws connection
+	//make new ws connection
 	err := a.Client.Auth()
 	if err != nil {
 		a.Msgs <- ShowError{ErrorMessage: err.Error()}

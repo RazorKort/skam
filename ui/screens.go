@@ -70,10 +70,11 @@ type MainScreen struct {
 	Client           *back.Client
 	FriendsList      layout.List
 	friendClickables map[int]*widget.Clickable
-	SelectedFriend   *back.User
+	MessagesList     layout.List
 	ProfileBtn       widget.Clickable
 	Message          widget.Editor
 	SendBtn          widget.Clickable
+	SendIcon         widget.Icon
 	Search           widget.Editor
 	SearchBtn        widget.Clickable
 	inset            layout.Inset
