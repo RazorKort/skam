@@ -16,6 +16,8 @@ type Client struct {
 	Friends        []User
 	FriendsById    map[int]int
 	SelectedFriend *User
+	WS             *WSClient
+	WsMsgChan      chan Message
 }
 
 // я ебал это делать отдельными структурами
@@ -39,6 +41,8 @@ type Body struct {
 	Users          []User    `json:"users,omitempty"`
 	Friends        []User    `json:"friends,omitempty"`
 	New_name       string    `json:"new_name,omitempty"`
+	Receiver_id    int       `json:"receiver_id,omitempty"`
+	Created_at     int       `json:"created_at,omitempty"`
 }
 
 type User struct {
@@ -54,15 +58,22 @@ type User struct {
 }
 
 type Message struct {
-	Id          int    `json:"id"`
-	Name        string `json:"name"`
+	Type        string `json:"type"`
+	Id          int    `json:"id,omitempty"`
+	Name        string `json:"name,omitempty"`
+	Sender_id   int    `json:"sender_id,omitempty"`
+	Receiver_id int    `json:"receiver_id,omitempty"`
+	Message     string `json:"message,omitempty"`
+	Created_at  int    `json:"created_at,omitempty"`
+	Plaintext   string
+	Sended      bool
+}
+type MessageToSend struct {
 	Sender_id   int    `json:"sender_id"`
 	Receiver_id int    `json:"receiver_id"`
 	Message     string `json:"message"`
-	Created_at  int    `json:"created_at,omitempty"`
-	Plaintext   string
+	Created_at  int    `json:"created_at"`
 }
-
 type KeyFile struct {
 	Salt        string `json:"salt,omitempty"`
 	Private_key string `json:"private_key"`

@@ -97,7 +97,30 @@ func (ms *MainScreen) Layout(gtx layout.Context, th *AppTheme) layout.Dimensions
 										aligment = layout.E
 									}
 									return aligment.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-										return ms.inset.Layout(gtx, text.Layout)
+										if msg.Sended {
+											return layout.Flex{
+												Axis: layout.Horizontal,
+											}.Layout(gtx,
+												layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+													return ms.inset.Layout(gtx, text.Layout)
+												}),
+												layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+													text := th.BodyText("sended")
+													return ms.inset.Layout(gtx, text.Layout)
+												}))
+										} else {
+											return layout.Flex{
+												Axis: layout.Horizontal,
+											}.Layout(gtx,
+												layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+													return ms.inset.Layout(gtx, text.Layout)
+												}),
+												layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+													text := th.BodyText("not sended")
+													return ms.inset.Layout(gtx, text.Layout)
+												}))
+										}
+
 									})
 
 								})

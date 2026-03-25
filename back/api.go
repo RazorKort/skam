@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"time"
 
 	"crypto/rand"
 	"net/http"
@@ -267,26 +268,26 @@ func (c *Client) LoadMessages(target_id int) error {
 	}
 
 	// Создаем карту существующих ID
-	//удаляем сообщения с id -1
+
+	//когда буду грузить частями, здаесь тоже проходиться по слайсу
 	existingMessages := make(map[int]bool)
-	j := 0
+	//например n = 50 to n+50
 	for i, msg := range c.Friends[idx].Messages {
 		if c.Friends[idx].Messages[i].Id != -1 {
-			c.Friends[idx].Messages[j] = c.Friends[idx].Messages[i]
 			existingMessages[msg.Id] = true
-			j++
 		}
 	}
-	c.Friends[idx].Messages = c.Friends[idx].Messages[:j]
 
 	// Добавляем новые сообщения
 	for i := range result.Messages {
 		if !existingMessages[result.Messages[i].Id] {
+			result.Messages[i].Sended = true
 			c.Friends[idx].Messages = append(c.Friends[idx].Messages, result.Messages[i])
 		}
 	}
 
 	// Сортируем сообщения по timestamp
+	//от меньшего к большему, дегенерат ебучий
 	sort.Slice(c.Friends[idx].Messages, func(i, j int) bool {
 		return c.Friends[idx].Messages[i].Created_at < c.Friends[idx].Messages[j].Created_at
 	})
@@ -331,4 +332,44 @@ func (c *Client) Ping() (string, error) {
 		return "", err
 	}
 	return result.Status, nil
+}
+
+func (c *Client) AddMessage(text string) (*Message, error) {
+	msg := Message{
+		Id:          -1,
+		Plaintext:   text,
+		Sender_id:   c.Id,
+		Receiver_id: c.SelectedFriend.Id,
+		Created_at:  int(time.Now().UnixMilli()),
+		Sended:      false,
+	}
+	err := EncryptMessage(&msg, *c.SelectedFriend)
+	if err != nil {
+		return nil, err
+	}
+	// Добавляем локально (оптимистичное обновление)
+	if c.SelectedFriend != nil {
+		c.SelectedFriend.Messages = append(c.SelectedFriend.Messages, msg)
+		return &msg, nil
+	}
+	return nil, fmt.Errorf("No selected friends")
+}
+
+// отправляем сообщение
+// falback на http не такая и плохая идея..., но надо придумать как обновлять такие сообщения
+func (c *Client) SendMessage(msg Message) error {
+
+	// Отправляем через WebSocket если есть
+	if c.WS != nil {
+		return c.WS.SendMessage(msg)
+	}
+
+	// Fallback на HTTP
+	body := Body{
+		Token:       c.token,
+		Receiver_id: c.SelectedFriend.Id,
+		Created_at:  int(time.Now().UnixMilli()),
+	}
+	_, err := c.HttpPost("/send", body)
+	return err
 }

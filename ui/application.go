@@ -3,7 +3,9 @@ package ui
 import (
 	"image"
 	"image/color"
+	"log"
 	"skam/back"
+	"sort"
 
 	"gioui.org/app"
 	"gioui.org/io/event"
@@ -205,13 +207,18 @@ func (a *Application) HandleMessage(msg Msg) {
 
 	case SendMessage:
 		go func() {
-			//send to ws
+			msg, err := a.Client.AddMessage(m.Text)
+			if err != nil {
+				a.Msgs <- ShowError{ErrorMessage: err.Error()}
+			}
+			a.Window.Invalidate()
+			a.Client.SendMessage(*msg)
 		}()
 	}
 }
 
 func (a *Application) AuthandLoad() bool {
-	//make new ws connection
+
 	err := a.Client.Auth()
 	if err != nil {
 		a.Msgs <- ShowError{ErrorMessage: err.Error()}
@@ -221,7 +228,48 @@ func (a *Application) AuthandLoad() bool {
 	if err != nil {
 		a.Msgs <- ShowError{ErrorMessage: err.Error()}
 		return false
+	}
+	wsClient, err := a.Client.NewWSClient()
+	if err != nil {
+		a.Msgs <- ShowError{ErrorMessage: err.Error()}
+		return false
 	} else {
-		return true
+		a.Client.WS = wsClient
+		a.Client.WsMsgChan = wsClient.MsgChan
+		go a.handleWebSocketMessages()
+	}
+	return true
+}
+
+// приходит сообщение, декриптим, заставляем перерисовать gui
+// если не firend не selected friend можно отправлять сообщение на pop up
+func (a *Application) handleWebSocketMessages() {
+	for msg := range a.Client.WsMsgChan {
+		switch msg.Type {
+		case "ack":
+			friend_indx := a.Client.FriendsById[msg.Receiver_id]
+			for i := len(a.Client.Friends[friend_indx].Messages) - 1; i >= 0; i-- {
+				message := &a.Client.Friends[friend_indx].Messages[i]
+				if message.Created_at == msg.Created_at && message.Id < 0 {
+					message.Id = msg.Id
+					message.Sended = true
+				}
+			}
+		case "message":
+			friend_indx := a.Client.FriendsById[msg.Sender_id]
+			err := back.DecryptMessage(&msg, a.Client.Friends[friend_indx])
+			if err != nil {
+				log.Printf("Failed to decrypt Ws message: %v", err)
+				continue
+			}
+			a.Client.Friends[friend_indx].Messages = append(a.Client.Friends[friend_indx].Messages, msg)
+			sort.Slice(a.Client.Friends[friend_indx].Messages, func(i, j int) bool {
+				return a.Client.Friends[friend_indx].Messages[i].Created_at < a.Client.Friends[friend_indx].Messages[j].Created_at
+			})
+			if a.Window != nil {
+				a.Window.Invalidate()
+			}
+		}
+
 	}
 }
