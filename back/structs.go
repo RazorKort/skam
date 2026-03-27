@@ -7,7 +7,7 @@ import (
 
 type Client struct {
 	Id             int
-	name           string
+	Name           string
 	ServerUrl      string
 	Http           *http.Client
 	private_bytes  [32]byte
@@ -15,9 +15,12 @@ type Client struct {
 	token          string
 	Friends        []User
 	FriendsById    map[int]int
+	Find           []User
 	SelectedFriend *User
 	WS             *WSClient
 	WsMsgChan      chan Message
+	WsSendChan     chan MessageToSend
+	Cnt            int
 }
 
 // я ебал это делать отдельными структурами
@@ -65,6 +68,7 @@ type Message struct {
 	Receiver_id int    `json:"receiver_id,omitempty"`
 	Message     string `json:"message,omitempty"`
 	Created_at  int    `json:"created_at,omitempty"`
+	Tmp_id      int    `json:"tmp_id,omitempty"`
 	Plaintext   string
 	Sended      bool
 }
@@ -73,6 +77,7 @@ type MessageToSend struct {
 	Receiver_id int    `json:"receiver_id"`
 	Message     string `json:"message"`
 	Created_at  int    `json:"created_at"`
+	Tmp_id      int    `json:"tmp_id,omitempty"`
 }
 type KeyFile struct {
 	Salt        string `json:"salt,omitempty"`

@@ -14,6 +14,7 @@ import (
 	"gioui.org/op/clip"
 	"gioui.org/op/paint"
 	"gioui.org/text"
+	"gioui.org/widget"
 	"gioui.org/widget/material"
 )
 
@@ -213,6 +214,32 @@ func (a *Application) HandleMessage(msg Msg) {
 			}
 			a.Window.Invalidate()
 			a.Client.SendMessage(*msg)
+			a.Window.Invalidate()
+		}()
+	case SearchUser:
+		go func() {
+			if screen, ok := (a.CurrentScreen).(*MainScreen); ok {
+				err := a.Client.SearchUser(m.Text)
+
+				if err != nil {
+					a.Msgs <- ShowError{ErrorMessage: err.Error()}
+					return
+				}
+				for _, friend := range a.Client.Find {
+					screen.friendClickables[friend.Id] = &widget.Clickable{}
+				}
+				screen.friendSub = true
+				screen.IsLoading = false
+			}
+		}()
+	case AddFriend:
+		go func() {
+			err := a.Client.AddFriend(m.Id)
+			if err != nil {
+				a.Msgs <- ShowError{ErrorMessage: err.Error()}
+				return
+			}
+			a.Msgs <- NavigateToMain{}
 		}()
 	}
 }
@@ -236,6 +263,7 @@ func (a *Application) AuthandLoad() bool {
 	} else {
 		a.Client.WS = wsClient
 		a.Client.WsMsgChan = wsClient.MsgChan
+		a.Client.WsSendChan = wsClient.MsgSendChan
 		go a.handleWebSocketMessages()
 	}
 	return true
@@ -250,8 +278,9 @@ func (a *Application) handleWebSocketMessages() {
 			friend_indx := a.Client.FriendsById[msg.Receiver_id]
 			for i := len(a.Client.Friends[friend_indx].Messages) - 1; i >= 0; i-- {
 				message := &a.Client.Friends[friend_indx].Messages[i]
-				if message.Created_at == msg.Created_at && message.Id < 0 {
+				if message.Tmp_id == msg.Tmp_id {
 					message.Id = msg.Id
+					message.Created_at = msg.Created_at
 					message.Sended = true
 				}
 			}
@@ -263,7 +292,10 @@ func (a *Application) handleWebSocketMessages() {
 				continue
 			}
 			a.Client.Friends[friend_indx].Messages = append(a.Client.Friends[friend_indx].Messages, msg)
-			sort.Slice(a.Client.Friends[friend_indx].Messages, func(i, j int) bool {
+			sort.SliceStable(a.Client.Friends[friend_indx].Messages, func(i, j int) bool {
+				if a.Client.Friends[friend_indx].Messages[i].Sended != a.Client.Friends[friend_indx].Messages[j].Sended {
+					return a.Client.Friends[friend_indx].Messages[i].Sended
+				}
 				return a.Client.Friends[friend_indx].Messages[i].Created_at < a.Client.Friends[friend_indx].Messages[j].Created_at
 			})
 			if a.Window != nil {

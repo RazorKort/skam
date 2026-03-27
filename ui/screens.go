@@ -64,6 +64,7 @@ type ImportScreen struct {
 	IsLoading     bool
 	inset         layout.Inset
 	paswordsMatch bool
+	needToScroll  bool
 }
 
 type MainScreen struct {
@@ -72,12 +73,25 @@ type MainScreen struct {
 	friendClickables map[int]*widget.Clickable
 	MessagesList     layout.List
 	ProfileBtn       widget.Clickable
+	ProfileIcon      widget.Icon
 	Message          widget.Editor
 	SendBtn          widget.Clickable
 	SendIcon         widget.Icon
+	SendingIcon      widget.Icon
+	SendedIcon       widget.Icon
 	Search           widget.Editor
 	SearchBtn        widget.Clickable
+	SearchIcon       widget.Icon
 	inset            layout.Inset
+	AddIcon          widget.Icon
 	IsLoading        bool
+	friendSub        bool
 	msgs             chan<- Msg
+}
+
+type ProfileScreen struct {
+	Client  *back.Client
+	BackBtn widget.Clickable
+	inset   layout.Inset
+	msgs    chan<- Msg
 }

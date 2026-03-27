@@ -1,7 +1,9 @@
 package ui
 
 import (
+	"image"
 	"skam/back"
+	"strings"
 
 	"gioui.org/layout"
 	"gioui.org/unit"
@@ -13,12 +15,34 @@ import (
 func NewMainScreen(msgs chan<- Msg, c *back.Client) *MainScreen {
 	var message widget.Editor
 	var search widget.Editor
+	search.SingleLine = true
+	var searchBtn widget.Clickable
+	var profileBtn widget.Clickable
 	var send widget.Clickable
 	sendIcon, err := widget.NewIcon(icons.ContentSend)
 	if err != nil {
 		sendIcon = nil
 	}
-
+	sendingIcon, err := widget.NewIcon(icons.ActionSchedule)
+	if err != nil {
+		sendingIcon = nil
+	}
+	sendedIcon, err := widget.NewIcon(icons.ActionDone)
+	if err != nil {
+		sendedIcon = nil
+	}
+	profileIcon, err := widget.NewIcon(icons.SocialPerson)
+	if err != nil {
+		profileIcon = nil
+	}
+	searchIcon, err := widget.NewIcon(icons.ActionSearch)
+	if err != nil {
+		searchIcon = nil
+	}
+	addIcon, err := widget.NewIcon(icons.ContentAdd)
+	if err != nil {
+		addIcon = nil
+	}
 	ms := &MainScreen{
 		Client:  c,
 		Message: message,
@@ -31,9 +55,17 @@ func NewMainScreen(msgs chan<- Msg, c *back.Client) *MainScreen {
 		},
 		SendBtn:          send,
 		SendIcon:         *sendIcon,
+		SendingIcon:      *sendingIcon,
+		SendedIcon:       *sendedIcon,
+		SearchBtn:        searchBtn,
+		ProfileBtn:       profileBtn,
+		SearchIcon:       *searchIcon,
+		ProfileIcon:      *profileIcon,
+		AddIcon:          *addIcon,
 		friendClickables: make(map[int]*widget.Clickable),
 		inset:            layout.UniformInset(unit.Dp(16)),
 		msgs:             msgs,
+		friendSub:        false,
 	}
 	for _, friend := range c.Friends {
 		ms.friendClickables[friend.Id] = &widget.Clickable{}
@@ -56,19 +88,62 @@ func (ms *MainScreen) Layout(gtx layout.Context, th *AppTheme) layout.Dimensions
 					Axis: layout.Vertical,
 				}.Layout(gtx,
 					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-						text := th.TitleText("поиск")
-						return ms.inset.Layout(gtx, text.Layout)
+						return layout.Flex{
+							Axis:      layout.Horizontal,
+							Alignment: layout.Middle,
+						}.Layout(gtx,
+							layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+								btn := material.IconButton(th.Theme, &ms.ProfileBtn, &ms.ProfileIcon, "Navigate to profile")
+								btn.Size = unit.Dp(20)
+								btn.Background = th.Bg
+								btn.Color = th.Colors.Secondary
+								btn.Inset = layout.UniformInset(unit.Dp(10))
+								inset := layout.UniformInset(unit.Dp(10))
+								return inset.Layout(gtx, btn.Layout)
+							}),
+							layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
+								input := th.Input(&ms.Search, "Find friends")
+								return ms.inset.Layout(gtx, input.Layout)
+							}),
+							layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+								btn := material.IconButton(th.Theme, &ms.SearchBtn, &ms.SearchIcon, "Find smbd")
+								btn.Size = unit.Dp(20)
+								btn.Background = th.Bg
+								btn.Color = th.Colors.Secondary
+								btn.Inset = layout.UniformInset(unit.Dp(10))
+								inset := layout.UniformInset(unit.Dp(10))
+								return inset.Layout(gtx, btn.Layout)
+							}),
+						)
 					}),
 					layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
-
-						return ms.FriendsList.Layout(gtx, len(ms.Client.Friends), func(gtx layout.Context, index int) layout.Dimensions {
-							friend := ms.Client.Friends[index]
-							click := ms.friendClickables[friend.Id]
-							return material.Clickable(gtx, click, func(gtx layout.Context) layout.Dimensions {
-								text := th.BodyText(friend.Name)
-								return ms.inset.Layout(gtx, text.Layout)
+						if ms.friendSub {
+							return ms.FriendsList.Layout(gtx, len(ms.Client.Find), func(gtx layout.Context, index int) layout.Dimensions {
+								friend := ms.Client.Find[index]
+								click := ms.friendClickables[friend.Id]
+								return layout.Flex{
+									Axis: layout.Horizontal,
+								}.Layout(gtx,
+									layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
+										text := th.BodyText(friend.Name)
+										return ms.inset.Layout(gtx, text.Layout)
+									}),
+									layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+										btn := material.IconButton(th.Theme, click, &ms.AddIcon, "add friend to friends")
+										return ms.inset.Layout(gtx, btn.Layout)
+									}),
+								)
 							})
-						})
+						} else {
+							return ms.FriendsList.Layout(gtx, len(ms.Client.Friends), func(gtx layout.Context, index int) layout.Dimensions {
+								friend := ms.Client.Friends[index]
+								click := ms.friendClickables[friend.Id]
+								return material.Clickable(gtx, click, func(gtx layout.Context) layout.Dimensions {
+									text := th.BodyText(friend.Name)
+									return ms.inset.Layout(gtx, text.Layout)
+								})
+							})
+						}
 					}),
 				)
 			}),
@@ -88,7 +163,7 @@ func (ms *MainScreen) Layout(gtx layout.Context, th *AppTheme) layout.Dimensions
 								return ms.inset.Layout(gtx, text.Layout)
 							} else {
 
-								ms.MessagesList.Position.BeforeEnd = true
+								ms.MessagesList.ScrollToEnd = true
 								return ms.MessagesList.Layout(gtx, len(ms.Client.SelectedFriend.Messages), func(gtx layout.Context, index int) layout.Dimensions {
 									msg := ms.Client.SelectedFriend.Messages[index]
 									text := th.BodyText(msg.Plaintext)
@@ -97,17 +172,41 @@ func (ms *MainScreen) Layout(gtx layout.Context, th *AppTheme) layout.Dimensions
 										aligment = layout.E
 									}
 									return aligment.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-										if msg.Sended {
-											return layout.Flex{
-												Axis: layout.Horizontal,
-											}.Layout(gtx,
-												layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-													return ms.inset.Layout(gtx, text.Layout)
-												}),
-												layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-													text := th.BodyText("sended")
-													return ms.inset.Layout(gtx, text.Layout)
-												}))
+										if aligment == layout.E {
+											if msg.Sended {
+												return layout.Flex{
+													Axis: layout.Horizontal,
+												}.Layout(gtx,
+													layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+														return ms.inset.Layout(gtx, text.Layout)
+													}),
+													layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+														return layout.Flex{
+															Axis: layout.Horizontal,
+														}.Layout(gtx,
+															layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
+																return layout.Dimensions{}
+															}),
+															layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
+																gtx.Constraints.Max = image.Pt(20, 20)
+																return ms.SendedIcon.Layout(gtx, th.Colors.Secondary)
+															}),
+														)
+
+													}))
+											} else {
+												return layout.Flex{
+													Axis: layout.Horizontal,
+												}.Layout(gtx,
+													layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+														return ms.inset.Layout(gtx, text.Layout)
+													}),
+													layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+														gtx.Constraints.Max = image.Pt(20, 20)
+														return ms.SendingIcon.Layout(gtx, th.Colors.Secondary)
+													}),
+												)
+											}
 										} else {
 											return layout.Flex{
 												Axis: layout.Horizontal,
@@ -115,10 +214,7 @@ func (ms *MainScreen) Layout(gtx layout.Context, th *AppTheme) layout.Dimensions
 												layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 													return ms.inset.Layout(gtx, text.Layout)
 												}),
-												layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-													text := th.BodyText("not sended")
-													return ms.inset.Layout(gtx, text.Layout)
-												}))
+											)
 										}
 
 									})
@@ -171,16 +267,45 @@ func (ms *MainScreen) Update(gtx layout.Context) bool {
 				ms.Client.SelectedFriend = &ms.Client.Friends[i]
 				changed = true
 				ms.IsLoading = true
+				ms.friendSub = false
 				ms.msgs <- FriendClicked{}
 			}
 		}
 	}
+	for _, user := range ms.Client.Find {
+		if clickable, exists := ms.friendClickables[user.Id]; exists {
+			if clickable.Clicked(gtx) && !ms.IsLoading {
+				ms.msgs <- AddFriend{Id: user.Id}
+				ms.IsLoading = true
+				ms.friendSub = false
+			}
+		}
+	}
 	if ms.SendBtn.Clicked(gtx) {
-		text := ms.Message.Text()
+		text := strings.TrimSpace(ms.Message.Text())
 		if text != "" {
+			changed = true
 			ms.msgs <- SendMessage{Text: text}
+			ms.MessagesList.Position.BeforeEnd = false
 			ms.Message.SetText("")
 		}
+
+	}
+
+	if ms.SearchBtn.Clicked(gtx) && !ms.IsLoading {
+		text := strings.TrimSpace(ms.Search.Text())
+		if text != "" {
+			changed = true
+			ms.IsLoading = true
+			ms.msgs <- SearchUser{Text: text}
+		}
+
+	}
+
+	if ms.ProfileBtn.Clicked(gtx) {
+		changed = true
+		ms.msgs <- NavigateToProfile{}
+
 	}
 
 	return changed

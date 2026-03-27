@@ -23,6 +23,7 @@ type NavigateToMain struct {
 	Msg
 }
 type NavigateToImport struct{ Msg }
+type NavigateToProfile struct{ Msg }
 
 type MainFailed struct{ Msg }
 
@@ -58,5 +59,15 @@ type ShowDialog struct{ Msg }
 
 type SendMessage struct {
 	Text string
+	Msg
+}
+
+type SearchUser struct {
+	Text string
+	Msg
+}
+
+type AddFriend struct {
+	Id int
 	Msg
 }

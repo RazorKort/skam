@@ -47,13 +47,14 @@ func NewClient(url string) (*Client, error) {
 	return &Client{
 		ServerUrl: url,
 		Http:      &http.Client{},
+		Cnt:       1,
 	}, nil
 }
 
 // регистрация
 // он сразу пишет в файл
 func (c *Client) Register(name string, password string) error {
-	c.name = name
+	c.Name = name
 	//генерим priv pub
 	public_b, private_b, err := box.GenerateKey(rand.Reader)
 	if err != nil {
@@ -126,7 +127,7 @@ func (c *Client) Auth() error {
 
 	c.token = result.Token
 	c.Id = result.Id
-	c.name = result.Name
+	c.Name = result.Name
 	return nil
 }
 
@@ -189,6 +190,10 @@ func (c *Client) AddFriend(friend_id int) error {
 		Friend_id: friend_id,
 	}
 	_, err := c.HttpPost("/addfriend", body)
+	if err != nil {
+		return err
+	}
+	err = c.GetFriends()
 	if err != nil {
 		return err
 	}
@@ -288,7 +293,11 @@ func (c *Client) LoadMessages(target_id int) error {
 
 	// Сортируем сообщения по timestamp
 	//от меньшего к большему, дегенерат ебучий
-	sort.Slice(c.Friends[idx].Messages, func(i, j int) bool {
+	// not sended внизу
+	sort.SliceStable(c.Friends[idx].Messages, func(i, j int) bool {
+		if c.Friends[idx].Messages[i].Sended != c.Friends[idx].Messages[j].Sended {
+			return c.Friends[idx].Messages[i].Sended
+		}
 		return c.Friends[idx].Messages[i].Created_at < c.Friends[idx].Messages[j].Created_at
 	})
 
@@ -305,23 +314,23 @@ func (c *Client) ChangeName(new_name string) error {
 	if err != nil {
 		return err
 	}
-	c.name = new_name
+	c.Name = new_name
 	return nil
 }
 
 // поиск юзеров не требует авторизации.... надо бы исправить
 // да и возвращает всех сразу. надо бы тоже исправить
-func (c *Client) SearchUser(name string) (*[]User, error) {
+func (c *Client) SearchUser(name string) error {
 	body := Body{
 		Name: name,
 	}
 
 	result, err := c.HttpPost("/search", body)
 	if err != nil {
-		return nil, err
+		return err
 	}
-
-	return &result.Users, nil
+	c.Find = result.Users
+	return nil
 }
 
 // просто пинг сервера
@@ -335,8 +344,9 @@ func (c *Client) Ping() (string, error) {
 }
 
 func (c *Client) AddMessage(text string) (*Message, error) {
+	c.Cnt++
 	msg := Message{
-		Id:          -1,
+		Id:          c.Cnt,
 		Plaintext:   text,
 		Sender_id:   c.Id,
 		Receiver_id: c.SelectedFriend.Id,
