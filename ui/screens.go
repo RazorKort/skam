@@ -82,6 +82,8 @@ type MainScreen struct {
 	Search           widget.Editor
 	SearchBtn        widget.Clickable
 	SearchIcon       widget.Icon
+	CloseBtn         widget.Clickable
+	CloseIcon        widget.Icon
 	inset            layout.Inset
 	AddIcon          widget.Icon
 	IsLoading        bool

@@ -12,6 +12,7 @@ func NewProfileScreen(msgs chan<- Msg, c *back.Client) *ProfileScreen {
 	var backbtn widget.Clickable
 
 	ps := &ProfileScreen{
+		Client:  c,
 		BackBtn: backbtn,
 		inset:   layout.UniformInset(unit.Dp(16)),
 		msgs:    msgs,

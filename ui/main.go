@@ -18,7 +18,12 @@ func NewMainScreen(msgs chan<- Msg, c *back.Client) *MainScreen {
 	search.SingleLine = true
 	var searchBtn widget.Clickable
 	var profileBtn widget.Clickable
+	var closeBtn widget.Clickable
 	var send widget.Clickable
+	closeIcon, err := widget.NewIcon(icons.NavigationClose)
+	if err != nil {
+		closeIcon = nil
+	}
 	sendIcon, err := widget.NewIcon(icons.ContentSend)
 	if err != nil {
 		sendIcon = nil
@@ -62,6 +67,8 @@ func NewMainScreen(msgs chan<- Msg, c *back.Client) *MainScreen {
 		SearchIcon:       *searchIcon,
 		ProfileIcon:      *profileIcon,
 		AddIcon:          *addIcon,
+		CloseBtn:         closeBtn,
+		CloseIcon:        *closeIcon,
 		friendClickables: make(map[int]*widget.Clickable),
 		inset:            layout.UniformInset(unit.Dp(16)),
 		msgs:             msgs,
@@ -92,8 +99,18 @@ func (ms *MainScreen) Layout(gtx layout.Context, th *AppTheme) layout.Dimensions
 							Axis:      layout.Horizontal,
 							Alignment: layout.Middle,
 						}.Layout(gtx,
+
 							layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-								btn := material.IconButton(th.Theme, &ms.ProfileBtn, &ms.ProfileIcon, "Navigate to profile")
+								var button *widget.Clickable
+								var icon *widget.Icon
+								if ms.friendSub {
+									button = &ms.CloseBtn
+									icon = &ms.CloseIcon
+								} else {
+									button = &ms.ProfileBtn
+									icon = &ms.ProfileIcon
+								}
+								btn := material.IconButton(th.Theme, button, icon, "Navigate to profile or close")
 								btn.Size = unit.Dp(20)
 								btn.Background = th.Bg
 								btn.Color = th.Colors.Secondary
@@ -103,7 +120,7 @@ func (ms *MainScreen) Layout(gtx layout.Context, th *AppTheme) layout.Dimensions
 							}),
 							layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
 								input := th.Input(&ms.Search, "Find friends")
-								return ms.inset.Layout(gtx, input.Layout)
+								return input.Layout(gtx)
 							}),
 							layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 								btn := material.IconButton(th.Theme, &ms.SearchBtn, &ms.SearchIcon, "Find smbd")
@@ -118,22 +135,44 @@ func (ms *MainScreen) Layout(gtx layout.Context, th *AppTheme) layout.Dimensions
 					}),
 					layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
 						if ms.friendSub {
-							return ms.FriendsList.Layout(gtx, len(ms.Client.Find), func(gtx layout.Context, index int) layout.Dimensions {
-								friend := ms.Client.Find[index]
-								click := ms.friendClickables[friend.Id]
+							if len(ms.Client.Find) == 0 {
 								return layout.Flex{
-									Axis: layout.Horizontal,
+									Axis: layout.Vertical,
 								}.Layout(gtx,
-									layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
-										text := th.BodyText(friend.Name)
-										return ms.inset.Layout(gtx, text.Layout)
-									}),
 									layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-										btn := material.IconButton(th.Theme, click, &ms.AddIcon, "add friend to friends")
-										return ms.inset.Layout(gtx, btn.Layout)
+										return layout.Inset{
+											Top: unit.Dp(20),
+										}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+											text := th.BodyText("Nothing found")
+											return layout.Center.Layout(gtx, text.Layout)
+										})
+
 									}),
 								)
-							})
+							} else {
+								return ms.FriendsList.Layout(gtx, len(ms.Client.Find), func(gtx layout.Context, index int) layout.Dimensions {
+									friend := ms.Client.Find[index]
+									click := ms.friendClickables[friend.Id]
+									return layout.Flex{
+										Axis:      layout.Horizontal,
+										Alignment: layout.Middle,
+									}.Layout(gtx,
+										layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
+											text := th.BodyText(friend.Name)
+											return ms.inset.Layout(gtx, text.Layout)
+										}),
+										layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+											btn := material.IconButton(th.Theme, click, &ms.AddIcon, "add friend to friends")
+											btn.Size = unit.Dp(20)
+											btn.Background = th.Bg
+											btn.Color = th.Colors.Secondary
+											btn.Inset = layout.UniformInset(unit.Dp(10))
+											inset := layout.UniformInset(unit.Dp(10))
+											return inset.Layout(gtx, btn.Layout)
+										}),
+									)
+								})
+							}
 						} else {
 							return ms.FriendsList.Layout(gtx, len(ms.Client.Friends), func(gtx layout.Context, index int) layout.Dimensions {
 								friend := ms.Client.Friends[index]
@@ -159,8 +198,12 @@ func (ms *MainScreen) Layout(gtx layout.Context, th *AppTheme) layout.Dimensions
 						layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
 
 							if ms.IsLoading {
-								text := th.BodyText("Загрузка сообщений...")
-								return ms.inset.Layout(gtx, text.Layout)
+								aligment := layout.Center
+								return aligment.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+									text := th.BodyText("Загрузка сообщений...")
+									return ms.inset.Layout(gtx, text.Layout)
+								})
+
 							} else {
 
 								ms.MessagesList.ScrollToEnd = true
@@ -225,11 +268,12 @@ func (ms *MainScreen) Layout(gtx layout.Context, th *AppTheme) layout.Dimensions
 						layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 							return layout.Flex{
 								Axis:      layout.Horizontal,
-								Alignment: layout.Middle,
+								Alignment: layout.End,
 							}.Layout(gtx,
 								layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
 									input := th.Input(&ms.Message, "Message")
-									return ms.inset.Layout(gtx, input.Layout)
+									inset := layout.UniformInset(26)
+									return inset.Layout(gtx, input.Layout)
 								}),
 								layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 									btn := material.IconButton(th.Theme, &ms.SendBtn, &ms.SendIcon, "Send")
@@ -268,6 +312,9 @@ func (ms *MainScreen) Update(gtx layout.Context) bool {
 				changed = true
 				ms.IsLoading = true
 				ms.friendSub = false
+				//он отлавливает когда ты нажимаешь на добавить в друзья уже добавленного друга...
+				//не просто говнокод, а ГОВНОКОДИЩЕ
+				ms.Search.SetText("")
 				ms.msgs <- FriendClicked{}
 			}
 		}
@@ -275,6 +322,7 @@ func (ms *MainScreen) Update(gtx layout.Context) bool {
 	for _, user := range ms.Client.Find {
 		if clickable, exists := ms.friendClickables[user.Id]; exists {
 			if clickable.Clicked(gtx) && !ms.IsLoading {
+				ms.Search.SetText("")
 				ms.msgs <- AddFriend{Id: user.Id}
 				ms.IsLoading = true
 				ms.friendSub = false
@@ -297,6 +345,7 @@ func (ms *MainScreen) Update(gtx layout.Context) bool {
 		if text != "" {
 			changed = true
 			ms.IsLoading = true
+
 			ms.msgs <- SearchUser{Text: text}
 		}
 
@@ -306,6 +355,12 @@ func (ms *MainScreen) Update(gtx layout.Context) bool {
 		changed = true
 		ms.msgs <- NavigateToProfile{}
 
+	}
+
+	if ms.CloseBtn.Clicked(gtx) {
+		changed = true
+		ms.Search.SetText("")
+		ms.friendSub = false
 	}
 
 	return changed

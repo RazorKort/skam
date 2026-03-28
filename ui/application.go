@@ -94,7 +94,8 @@ func (a *Application) HandleMessage(msg Msg) {
 		a.CurrentScreen = NewImportScreeen(a.Msgs)
 	case NavigateToMain:
 		a.CurrentScreen = NewMainScreen(a.Msgs, a.Client)
-
+	case NavigateToProfile:
+		a.CurrentScreen = NewProfileScreen(a.Msgs, a.Client)
 	case LoginAttempt:
 		go func() {
 			err := a.Client.LoadKeys(a.KEY_PATH, m.Password)
