@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"os"
 	"skam/back"
 	"skam/ui"
@@ -14,6 +15,8 @@ const URL string = "skam.su:10000"
 const KEY_PATH string = "session.key"
 
 func main() {
+	log.SetOutput(os.Stdout)
+	log.Printf("Starting...")
 	go func() {
 		window := new(app.Window)
 		window.Option(
@@ -25,7 +28,7 @@ func main() {
 		appState.URL = URL
 		err := RunApp(appState)
 		if err != nil {
-			panic(err)
+			log.Println(err)
 		}
 		os.Exit(0)
 	}()

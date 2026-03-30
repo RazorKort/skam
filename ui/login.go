@@ -11,6 +11,7 @@ func NewLoginScreen(msgs chan<- Msg) *LoginScreen {
 	var password widget.Editor
 	password.SingleLine = true
 	password.Mask = '*'
+	password.Submit = true
 
 	return &LoginScreen{
 		Password: password,
@@ -22,7 +23,6 @@ func NewLoginScreen(msgs chan<- Msg) *LoginScreen {
 func (ls *LoginScreen) Layout(gtx layout.Context, th *AppTheme) layout.Dimensions {
 
 	gtx = th.Background(gtx)
-
 	return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 		return layout.Flex{
 			Axis:      layout.Vertical,
@@ -72,6 +72,17 @@ func (ls *LoginScreen) Update(gtx layout.Context) bool {
 		changed = true
 		ls.msgs <- LoginAttempt{
 			Password: ls.Password.Text(),
+		}
+	}
+	ev, _ := ls.Password.Update(gtx)
+	if ev != nil && !ls.IsLoading {
+		switch ev.(type) {
+		case widget.SubmitEvent:
+			ls.IsLoading = true
+			changed = true
+			ls.msgs <- LoginAttempt{
+				Password: ls.Password.Text(),
+			}
 		}
 	}
 

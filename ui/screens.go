@@ -41,6 +41,7 @@ type LoginScreen struct {
 
 type RegisterScreen struct {
 	BackBtn         widget.Clickable
+	BackIcon        widget.Icon
 	Name            widget.Editor
 	ConfirmPassword widget.Editor
 	Password        widget.Editor
@@ -56,6 +57,7 @@ type RegisterScreen struct {
 
 type ImportScreen struct {
 	BackBtn       widget.Clickable
+	BackIcon      widget.Icon
 	Path          widget.Editor
 	Password      widget.Editor
 	Password2     widget.Editor
@@ -88,12 +90,14 @@ type MainScreen struct {
 	AddIcon          widget.Icon
 	IsLoading        bool
 	friendSub        bool
-	msgs             chan<- Msg
+
+	msgs chan<- Msg
 }
 
 type ProfileScreen struct {
-	Client  *back.Client
-	BackBtn widget.Clickable
-	inset   layout.Inset
-	msgs    chan<- Msg
+	Client   *back.Client
+	BackIcon widget.Icon
+	BackBtn  widget.Clickable
+	inset    layout.Inset
+	msgs     chan<- Msg
 }

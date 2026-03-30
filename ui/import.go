@@ -1,21 +1,33 @@
 package ui
 
 import (
+	"image"
+
 	"gioui.org/layout"
 	"gioui.org/unit"
 	"gioui.org/widget"
+	"gioui.org/widget/material"
+
+	"golang.org/x/exp/shiny/materialdesign/icons"
 )
 
 func NewImportScreeen(msgs chan<- Msg) *ImportScreen {
+	backIcon, err := widget.NewIcon(icons.NavigationArrowBack)
+	if err != nil {
+		backIcon = nil
+	}
 	var pathKey widget.Editor
 	pathKey.SingleLine = true
+	pathKey.Submit = true
 
 	var password widget.Editor
 	password.SingleLine = true
+	password.Submit = true
 	password.Mask = '*'
 
 	var password2 widget.Editor
 	password2.SingleLine = true
+	password2.Submit = true
 	password2.Mask = '*'
 
 	return &ImportScreen{
@@ -23,6 +35,7 @@ func NewImportScreeen(msgs chan<- Msg) *ImportScreen {
 		Password2: password2,
 		Path:      pathKey,
 		msgs:      msgs,
+		BackIcon:  *backIcon,
 		inset:     layout.UniformInset(unit.Dp(16)),
 	}
 }
@@ -30,41 +43,64 @@ func NewImportScreeen(msgs chan<- Msg) *ImportScreen {
 func (is *ImportScreen) Layout(gtx layout.Context, th *AppTheme) layout.Dimensions {
 	gtx = th.Background(gtx)
 
-	return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-		return layout.Flex{
-			Axis:      layout.Vertical,
-			Alignment: layout.Middle,
-			Spacing:   layout.SpaceEvenly,
-		}.Layout(gtx,
-			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-				btn := th.Button(&is.BackBtn, "Placeholder back")
-				return is.inset.Layout(gtx, btn.Layout)
-			}),
-			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+	return layout.Stack{}.Layout(gtx,
+		layout.Expanded(func(gtx layout.Context) layout.Dimensions {
+			//какой криворукий уебан писал layout.Center, что он центрирует по min
+			//почему блять в Expanded передается min 0,0
+			//почему я блять руками должен менять ограничения чтобы нормально центрировать это говно
+			//ответов не будет блять
+			gtx.Constraints.Min = gtx.Constraints.Max
+			return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+				gtx.Constraints.Min = image.Pt(0, 0)
 				return layout.Flex{
 					Axis:      layout.Vertical,
-					Alignment: layout.Start,
+					Alignment: layout.Middle,
+					Spacing:   layout.SpaceAround,
 				}.Layout(gtx,
 					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-						input := th.Input(&is.Path, "Path to file with keys")
-						return is.inset.Layout(gtx, input.Layout)
+						text := th.TitleText("Import keys")
+						return is.inset.Layout(gtx, text.Layout)
 					}),
 					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-						input := th.Input(&is.Password, "New password")
-						return is.inset.Layout(gtx, input.Layout)
+						return layout.Flex{
+							Axis:      layout.Vertical,
+							Alignment: layout.Start,
+							//Spacing:   layout.SpaceAround,
+						}.Layout(gtx,
+
+							layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+								input := th.Input(&is.Path, "Path to file with keys")
+								return is.inset.Layout(gtx, input.Layout)
+							}),
+							layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+								input := th.Input(&is.Password, "New password")
+								return is.inset.Layout(gtx, input.Layout)
+							}),
+							layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+								input := th.Input(&is.Password2, "Confirm password")
+								return is.inset.Layout(gtx, input.Layout)
+							}),
+						)
 					}),
 					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-						input := th.Input(&is.Password2, "Confirm password")
-						return is.inset.Layout(gtx, input.Layout)
+						btn := th.Button(&is.ImportKeyBtn, "Import")
+						return is.inset.Layout(gtx, btn.Layout)
 					}),
 				)
-			}),
-			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-				btn := th.Button(&is.ImportKeyBtn, "Import")
-				return is.inset.Layout(gtx, btn.Layout)
-			}),
-		)
-	})
+			})
+
+		}),
+		layout.Stacked(func(gtx layout.Context) layout.Dimensions {
+			btn := material.IconButton(th.Theme, &is.BackBtn, &is.BackIcon, "back arrow")
+			btn.Size = unit.Dp(20)
+			btn.Background = th.Bg
+			btn.Color = th.Colors.Secondary
+			btn.Inset = layout.UniformInset(unit.Dp(10))
+			inset := layout.UniformInset(unit.Dp(10))
+			return inset.Layout(gtx, btn.Layout)
+		}),
+	)
+
 }
 
 func (is *ImportScreen) Update(gtx layout.Context) bool {
@@ -90,6 +126,18 @@ func (is *ImportScreen) Update(gtx layout.Context) bool {
 			Password: pswd,
 		}
 		changed = true
+	}
+	ev, _ := is.Password2.Update(gtx)
+	if ev != nil && !is.IsLoading && is.paswordsMatch {
+		switch ev.(type) {
+		case widget.SubmitEvent:
+			is.IsLoading = true
+			is.msgs <- ImportAttempt{
+				Path:     is.Path.Text(),
+				Password: pswd,
+			}
+			changed = true
+		}
 	}
 
 	return changed

@@ -5,6 +5,7 @@ import (
 	"skam/back"
 	"strings"
 
+	"gioui.org/io/key"
 	"gioui.org/layout"
 	"gioui.org/unit"
 	"gioui.org/widget"
@@ -16,10 +17,8 @@ func NewMainScreen(msgs chan<- Msg, c *back.Client) *MainScreen {
 	var message widget.Editor
 	var search widget.Editor
 	search.SingleLine = true
-	var searchBtn widget.Clickable
-	var profileBtn widget.Clickable
-	var closeBtn widget.Clickable
-	var send widget.Clickable
+	search.Submit = true
+
 	closeIcon, err := widget.NewIcon(icons.NavigationClose)
 	if err != nil {
 		closeIcon = nil
@@ -58,16 +57,12 @@ func NewMainScreen(msgs chan<- Msg, c *back.Client) *MainScreen {
 		MessagesList: layout.List{
 			Axis: layout.Vertical,
 		},
-		SendBtn:          send,
 		SendIcon:         *sendIcon,
 		SendingIcon:      *sendingIcon,
 		SendedIcon:       *sendedIcon,
-		SearchBtn:        searchBtn,
-		ProfileBtn:       profileBtn,
 		SearchIcon:       *searchIcon,
 		ProfileIcon:      *profileIcon,
 		AddIcon:          *addIcon,
-		CloseBtn:         closeBtn,
 		CloseIcon:        *closeIcon,
 		friendClickables: make(map[int]*widget.Clickable),
 		inset:            layout.UniformInset(unit.Dp(16)),
@@ -329,6 +324,29 @@ func (ms *MainScreen) Update(gtx layout.Context) bool {
 			}
 		}
 	}
+	for {
+		// Фильтруем нажатие Enter
+		kev, ok := gtx.Event(key.Filter{Name: key.NameReturn})
+		if !ok {
+			break
+		}
+
+		if kev, ok := kev.(key.Event); ok && kev.State == key.Press {
+			if kev.Modifiers.Contain(key.ModShift) {
+				// Shift+Enter → вставляем новую строку
+				ms.Message.Insert("\n")
+				changed = true
+			} else {
+				text := ms.Message.Text()
+				if text != "" {
+					changed = true
+					ms.msgs <- SendMessage{Text: text}
+					ms.MessagesList.Position.BeforeEnd = false
+					ms.Message.SetText("")
+				}
+			}
+		}
+	}
 	if ms.SendBtn.Clicked(gtx) {
 		text := strings.TrimSpace(ms.Message.Text())
 		if text != "" {
@@ -339,7 +357,19 @@ func (ms *MainScreen) Update(gtx layout.Context) bool {
 		}
 
 	}
+	ev, _ := ms.Search.Update(gtx)
+	if ev != nil && !ms.IsLoading {
+		switch ev.(type) {
+		case widget.SubmitEvent:
+			text := strings.TrimSpace(ms.Search.Text())
+			if text != "" {
+				changed = true
+				ms.IsLoading = true
 
+				ms.msgs <- SearchUser{Text: text}
+			}
+		}
+	}
 	if ms.SearchBtn.Clicked(gtx) && !ms.IsLoading {
 		text := strings.TrimSpace(ms.Search.Text())
 		if text != "" {
