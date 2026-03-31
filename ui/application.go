@@ -295,10 +295,14 @@ func (a *Application) handleWebSocketMessages() {
 			}
 			a.Client.Friends[friend_indx].Messages = append(a.Client.Friends[friend_indx].Messages, msg)
 			sort.SliceStable(a.Client.Friends[friend_indx].Messages, func(i, j int) bool {
-				if a.Client.Friends[friend_indx].Messages[i].Sended != a.Client.Friends[friend_indx].Messages[j].Sended {
-					return a.Client.Friends[friend_indx].Messages[i].Sended
+				// Для своих сообщений (Id = -1) оставляем их внизу
+				if a.Client.Friends[friend_indx].Messages[i].Id == -1 {
+					return false
 				}
-				return a.Client.Friends[friend_indx].Messages[i].Created_at < a.Client.Friends[friend_indx].Messages[j].Created_at
+				if a.Client.Friends[friend_indx].Messages[j].Id == -1 {
+					return true
+				}
+				return a.Client.Friends[friend_indx].Messages[i].Id < a.Client.Friends[friend_indx].Messages[j].Id
 			})
 			if a.Window != nil {
 				a.Window.Invalidate()

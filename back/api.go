@@ -351,6 +351,7 @@ func (c *Client) AddMessage(text string) (*Message, error) {
 		Sender_id:   c.Id,
 		Receiver_id: c.SelectedFriend.Id,
 		Created_at:  int(time.Now().UnixMilli()),
+		Tmp_id:      -1,
 		Sended:      false,
 	}
 	err := EncryptMessage(&msg, *c.SelectedFriend)
