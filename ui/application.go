@@ -189,10 +189,11 @@ func (a *Application) HandleMessage(msg Msg) {
 					err := a.Client.LoadMessages(a.Client.SelectedFriend.Id)
 					if err != nil {
 						screen.IsLoading = false
-						a.Client.SelectedFriend.Loaded = true
+
 						a.Msgs <- ShowError{ErrorMessage: err.Error()}
 						return
 					}
+					a.Client.SelectedFriend.Loaded = true
 				}
 				for i := range a.Client.SelectedFriend.Messages {
 					err := back.DecryptMessage(&a.Client.SelectedFriend.Messages[i], *a.Client.SelectedFriend)
@@ -279,7 +280,7 @@ func (a *Application) handleWebSocketMessages() {
 			friend_indx := a.Client.FriendsById[msg.Receiver_id]
 			for i := len(a.Client.Friends[friend_indx].Messages) - 1; i >= 0; i-- {
 				message := &a.Client.Friends[friend_indx].Messages[i]
-				if message.Tmp_id == msg.Tmp_id {
+				if message.Id == msg.Tmp_id {
 					message.Id = msg.Id
 					message.Created_at = msg.Created_at
 					message.Sended = true
