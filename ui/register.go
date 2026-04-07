@@ -6,7 +6,6 @@ import (
 	"gioui.org/layout"
 	"gioui.org/unit"
 	"gioui.org/widget"
-	"gioui.org/widget/material"
 	"golang.org/x/exp/shiny/materialdesign/icons"
 )
 
@@ -48,6 +47,7 @@ func (rs *RegisterScreen) Layout(gtx layout.Context, th *AppTheme) layout.Dimens
 			gtx.Constraints.Min = gtx.Constraints.Max
 			return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 				gtx.Constraints.Min = image.Pt(0, 0)
+				inset := layout.UniformInset(10)
 				return layout.Flex{
 					Axis:      layout.Vertical,
 					Alignment: layout.Middle,
@@ -59,24 +59,51 @@ func (rs *RegisterScreen) Layout(gtx layout.Context, th *AppTheme) layout.Dimens
 						return rs.inset.Layout(gtx, title.Layout)
 					}),
 					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+						gtx.Constraints.Max.X = 320
+						gtx.Constraints.Min.X = 320
 						return layout.Flex{
 							Axis:      layout.Vertical,
 							Alignment: layout.Start,
 						}.Layout(gtx,
+
 							layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-								// Password input
-								editor := th.Input(&rs.Name, "Enter your Name")
-								return rs.inset.Layout(gtx, editor.Layout)
+								return widget.Border{
+									Color:        th.Colors.Border,
+									CornerRadius: 8,
+									Width:        1,
+								}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+									editor := th.Input(&rs.Name, "Enter your Name")
+									return inset.Layout(gtx, editor.Layout)
+								})
+
 							}),
 							layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 								// Password input
-								editor := th.Input(&rs.Password, "Password")
-								return rs.inset.Layout(gtx, editor.Layout)
+								inset2 := layout.UniformInset(10)
+								inset2.Left = 0
+								inset2.Right = 0
+								return inset2.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+									return widget.Border{
+										Color:        th.Colors.Border,
+										CornerRadius: 8,
+										Width:        1,
+									}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+										editor := th.Input(&rs.Password, "Password")
+										return inset.Layout(gtx, editor.Layout)
+									})
+								})
 							}),
 							layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 								// Password input
-								editor := th.Input(&rs.ConfirmPassword, "Confirm Password")
-								return rs.inset.Layout(gtx, editor.Layout)
+								return widget.Border{
+									Color:        th.Colors.Border,
+									CornerRadius: 8,
+									Width:        1,
+								}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+									editor := th.Input(&rs.ConfirmPassword, "Confirm Password")
+									return inset.Layout(gtx, editor.Layout)
+								})
+
 							}),
 						)
 					}),
@@ -90,11 +117,7 @@ func (rs *RegisterScreen) Layout(gtx layout.Context, th *AppTheme) layout.Dimens
 			})
 		}),
 		layout.Stacked(func(gtx layout.Context) layout.Dimensions {
-			btn := material.IconButton(th.Theme, &rs.BackBtn, &rs.BackIcon, "back arrow")
-			btn.Size = unit.Dp(20)
-			btn.Background = th.Bg
-			btn.Color = th.Colors.Secondary
-			btn.Inset = layout.UniformInset(unit.Dp(10))
+			btn := th.IconButtonSecondary(&rs.BackBtn, &rs.BackIcon, "back arrow")
 			inset := layout.UniformInset(unit.Dp(10))
 			return inset.Layout(gtx, btn.Layout)
 		}),

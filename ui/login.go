@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"gioui.org/io/key"
 	"gioui.org/layout"
 	"gioui.org/unit"
 	"gioui.org/widget"
@@ -14,9 +15,10 @@ func NewLoginScreen(msgs chan<- Msg) *LoginScreen {
 	password.Submit = true
 
 	return &LoginScreen{
-		Password: password,
-		msgs:     msgs,
-		inset:    layout.UniformInset(unit.Dp(16)),
+		Password:  password,
+		msgs:      msgs,
+		needFoucs: true,
+		inset:     layout.UniformInset(unit.Dp(16)),
 	}
 }
 
@@ -36,11 +38,23 @@ func (ls *LoginScreen) Layout(gtx layout.Context, th *AppTheme) layout.Dimension
 			}),
 			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 				// Password input
-				editor := th.Input(&ls.Password, "Password")
-				return ls.inset.Layout(gtx, editor.Layout)
+				return widget.Border{
+					Color:        th.Colors.Border,
+					CornerRadius: 8,
+					Width:        1,
+				}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+					gtx.Constraints.Min.X = 200
+					gtx.Constraints.Max.X = 200
+					editor := th.Input(&ls.Password, "Password")
+					inset := layout.UniformInset(8)
+					return inset.Layout(gtx, editor.Layout)
+				})
+
 			}),
 			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 				// Login button (primary)
+				gtx.Constraints.Max.X = 180
+				gtx.Constraints.Min.X = 180
 				btn := th.Button(&ls.LoginButton, "Login")
 				return ls.inset.Layout(gtx, btn.Layout)
 			}),
@@ -66,6 +80,10 @@ func (ls *LoginScreen) Layout(gtx layout.Context, th *AppTheme) layout.Dimension
 
 func (ls *LoginScreen) Update(gtx layout.Context) bool {
 	changed := false
+	if ls.needFoucs {
+		gtx.Execute(key.FocusCmd{Tag: &ls.Password})
+		ls.needFoucs = false
+	}
 	// Обработка кнопки логина
 	if ls.LoginButton.Clicked(gtx) && !ls.IsLoading && ls.Password.Text() != "" {
 		ls.IsLoading = true

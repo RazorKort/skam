@@ -6,7 +6,6 @@ import (
 	"gioui.org/layout"
 	"gioui.org/unit"
 	"gioui.org/widget"
-	"gioui.org/widget/material"
 
 	"golang.org/x/exp/shiny/materialdesign/icons"
 )
@@ -52,6 +51,8 @@ func (is *ImportScreen) Layout(gtx layout.Context, th *AppTheme) layout.Dimensio
 			gtx.Constraints.Min = gtx.Constraints.Max
 			return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 				gtx.Constraints.Min = image.Pt(0, 0)
+				inset := layout.UniformInset(10)
+
 				return layout.Flex{
 					Axis:      layout.Vertical,
 					Alignment: layout.Middle,
@@ -62,23 +63,47 @@ func (is *ImportScreen) Layout(gtx layout.Context, th *AppTheme) layout.Dimensio
 						return is.inset.Layout(gtx, text.Layout)
 					}),
 					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+						gtx.Constraints.Max.X = 320
+						gtx.Constraints.Min.X = 320
 						return layout.Flex{
 							Axis:      layout.Vertical,
 							Alignment: layout.Start,
-							//Spacing:   layout.SpaceAround,
 						}.Layout(gtx,
 
 							layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-								input := th.Input(&is.Path, "Path to file with keys")
-								return is.inset.Layout(gtx, input.Layout)
+								return widget.Border{
+									Color:        th.Colors.Border,
+									CornerRadius: 8,
+									Width:        1,
+								}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+									input := th.Input(&is.Path, "Path to file with keys")
+									return inset.Layout(gtx, input.Layout)
+								})
 							}),
 							layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-								input := th.Input(&is.Password, "New password")
-								return is.inset.Layout(gtx, input.Layout)
+								inset2 := layout.UniformInset(10)
+								inset2.Left = 0
+								inset2.Right = 0
+								return inset2.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+									return widget.Border{
+										Color:        th.Colors.Border,
+										CornerRadius: 8,
+										Width:        1,
+									}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+										input := th.Input(&is.Password, "New password")
+										return inset.Layout(gtx, input.Layout)
+									})
+								})
 							}),
 							layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-								input := th.Input(&is.Password2, "Confirm password")
-								return is.inset.Layout(gtx, input.Layout)
+								return widget.Border{
+									Color:        th.Colors.Border,
+									CornerRadius: 8,
+									Width:        1,
+								}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+									input := th.Input(&is.Password2, "Confirm password")
+									return inset.Layout(gtx, input.Layout)
+								})
 							}),
 						)
 					}),
@@ -91,11 +116,7 @@ func (is *ImportScreen) Layout(gtx layout.Context, th *AppTheme) layout.Dimensio
 
 		}),
 		layout.Stacked(func(gtx layout.Context) layout.Dimensions {
-			btn := material.IconButton(th.Theme, &is.BackBtn, &is.BackIcon, "back arrow")
-			btn.Size = unit.Dp(20)
-			btn.Background = th.Bg
-			btn.Color = th.Colors.Secondary
-			btn.Inset = layout.UniformInset(unit.Dp(10))
+			btn := th.IconButtonSecondary(&is.BackBtn, &is.BackIcon, "back arrow")
 			inset := layout.UniformInset(unit.Dp(10))
 			return inset.Layout(gtx, btn.Layout)
 		}),

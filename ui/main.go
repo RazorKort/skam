@@ -5,8 +5,11 @@ import (
 	"skam/back"
 	"strings"
 
+	"gioui.org/f32"
 	"gioui.org/io/key"
 	"gioui.org/layout"
+	"gioui.org/op/clip"
+	"gioui.org/op/paint"
 	"gioui.org/unit"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
@@ -86,11 +89,24 @@ func (ms *MainScreen) Layout(gtx layout.Context, th *AppTheme) layout.Dimensions
 			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 				gtx.Constraints.Min.X = 400
 				gtx.Constraints.Max.X = 400
+
+				//попиксельное рисование, пиздец...
+				var path clip.Path
+				path.Begin(gtx.Ops)
+				path.MoveTo(f32.Pt(float32(gtx.Constraints.Max.X), 0))
+				path.LineTo(f32.Pt(float32(gtx.Constraints.Max.X), float32(gtx.Constraints.Max.Y)))
+				pathSpec := path.End()
+				paint.FillShape(gtx.Ops, th.Colors.Border, clip.Stroke{
+					Path:  pathSpec,
+					Width: 1,
+				}.Op())
+
 				return layout.Flex{
 					Axis: layout.Vertical,
 				}.Layout(gtx,
 					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-						return layout.Flex{
+
+						dimis := layout.Flex{
 							Axis:      layout.Horizontal,
 							Alignment: layout.Middle,
 						}.Layout(gtx,
@@ -105,12 +121,9 @@ func (ms *MainScreen) Layout(gtx layout.Context, th *AppTheme) layout.Dimensions
 									button = &ms.ProfileBtn
 									icon = &ms.ProfileIcon
 								}
-								btn := material.IconButton(th.Theme, button, icon, "Navigate to profile or close")
-								btn.Size = unit.Dp(20)
-								btn.Background = th.Bg
-								btn.Color = th.Colors.Secondary
-								btn.Inset = layout.UniformInset(unit.Dp(10))
+								btn := th.IconButtonSecondary(button, icon, "Navigate to profile or close")
 								inset := layout.UniformInset(unit.Dp(10))
+								inset.Bottom = 6
 								return inset.Layout(gtx, btn.Layout)
 							}),
 							layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
@@ -118,15 +131,24 @@ func (ms *MainScreen) Layout(gtx layout.Context, th *AppTheme) layout.Dimensions
 								return input.Layout(gtx)
 							}),
 							layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-								btn := material.IconButton(th.Theme, &ms.SearchBtn, &ms.SearchIcon, "Find smbd")
-								btn.Size = unit.Dp(20)
-								btn.Background = th.Bg
-								btn.Color = th.Colors.Secondary
-								btn.Inset = layout.UniformInset(unit.Dp(10))
+								btn := th.IconButtonSecondary(&ms.SearchBtn, &ms.SearchIcon, "Find smbd")
 								inset := layout.UniformInset(unit.Dp(10))
+								inset.Bottom = 6
 								return inset.Layout(gtx, btn.Layout)
 							}),
 						)
+
+						var path clip.Path
+						path.Begin(gtx.Ops)
+						path.MoveTo(f32.Pt(0, float32(dimis.Size.Y)))
+						path.LineTo(f32.Pt(float32(dimis.Size.X), float32(dimis.Size.Y)))
+						pathSpec := path.End()
+						paint.FillShape(gtx.Ops, th.Colors.Border, clip.Stroke{
+							Path:  pathSpec,
+							Width: 1,
+						}.Op())
+
+						return dimis
 					}),
 					layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
 						if ms.friendSub {
@@ -157,11 +179,7 @@ func (ms *MainScreen) Layout(gtx layout.Context, th *AppTheme) layout.Dimensions
 											return ms.inset.Layout(gtx, text.Layout)
 										}),
 										layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-											btn := material.IconButton(th.Theme, click, &ms.AddIcon, "add friend to friends")
-											btn.Size = unit.Dp(20)
-											btn.Background = th.Bg
-											btn.Color = th.Colors.Secondary
-											btn.Inset = layout.UniformInset(unit.Dp(10))
+											btn := th.IconButtonSecondary(click, &ms.AddIcon, "add friend to friends")
 											inset := layout.UniformInset(unit.Dp(10))
 											return inset.Layout(gtx, btn.Layout)
 										}),
@@ -213,28 +231,25 @@ func (ms *MainScreen) Layout(gtx layout.Context, th *AppTheme) layout.Dimensions
 										if aligment == layout.E {
 											if msg.Sended {
 												return layout.Flex{
-													Axis: layout.Horizontal,
+													Axis:      layout.Horizontal,
+													Alignment: layout.End,
 												}.Layout(gtx,
 													layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 														return ms.inset.Layout(gtx, text.Layout)
 													}),
 													layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-														return layout.Flex{
-															Axis: layout.Horizontal,
-														}.Layout(gtx,
-															layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
-																return layout.Dimensions{}
-															}),
-															layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
-																gtx.Constraints.Max = image.Pt(20, 20)
-																return ms.SendedIcon.Layout(gtx, th.Colors.Secondary)
-															}),
-														)
+														var inset layout.Inset
+														inset = layout.Inset{Bottom: unit.Dp(10), Right: unit.Dp(6)}
+														return inset.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+															gtx.Constraints.Max = image.Pt(20, 20)
+															return ms.SendedIcon.Layout(gtx, th.Colors.Secondary)
+														})
 
 													}))
 											} else {
 												return layout.Flex{
-													Axis: layout.Horizontal,
+													Axis:      layout.Horizontal,
+													Alignment: layout.End,
 												}.Layout(gtx,
 													layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 														return ms.inset.Layout(gtx, text.Layout)
@@ -266,9 +281,20 @@ func (ms *MainScreen) Layout(gtx layout.Context, th *AppTheme) layout.Dimensions
 								Alignment: layout.End,
 							}.Layout(gtx,
 								layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
-									input := th.Input(&ms.Message, "Message")
-									inset := layout.UniformInset(26)
-									return inset.Layout(gtx, input.Layout)
+									inset2 := layout.UniformInset(0)
+									inset2.Bottom = 14
+									inset2.Left = 8
+									return inset2.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+										return widget.Border{
+											Color:        th.Colors.Border,
+											CornerRadius: 8,
+											Width:        1,
+										}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+											input := th.Input(&ms.Message, "Message")
+											inset := layout.UniformInset(12)
+											return inset.Layout(gtx, input.Layout)
+										})
+									})
 								}),
 								layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 									btn := material.IconButton(th.Theme, &ms.SendBtn, &ms.SendIcon, "Send")
@@ -324,6 +350,19 @@ func (ms *MainScreen) Update(gtx layout.Context) bool {
 			}
 		}
 	}
+	ev, _ := ms.Search.Update(gtx)
+	if ev != nil && !ms.IsLoading {
+		switch ev.(type) {
+		case widget.SubmitEvent:
+			text := strings.TrimSpace(ms.Search.Text())
+			if text != "" {
+				changed = true
+				ms.IsLoading = true
+
+				ms.msgs <- SearchUser{Text: text}
+			}
+		}
+	}
 	for {
 		// Фильтруем нажатие Enter
 		kev, ok := gtx.Event(key.Filter{Name: key.NameReturn})
@@ -347,6 +386,7 @@ func (ms *MainScreen) Update(gtx layout.Context) bool {
 			}
 		}
 	}
+
 	if ms.SendBtn.Clicked(gtx) {
 		text := strings.TrimSpace(ms.Message.Text())
 		if text != "" {
@@ -357,19 +397,7 @@ func (ms *MainScreen) Update(gtx layout.Context) bool {
 		}
 
 	}
-	ev, _ := ms.Search.Update(gtx)
-	if ev != nil && !ms.IsLoading {
-		switch ev.(type) {
-		case widget.SubmitEvent:
-			text := strings.TrimSpace(ms.Search.Text())
-			if text != "" {
-				changed = true
-				ms.IsLoading = true
 
-				ms.msgs <- SearchUser{Text: text}
-			}
-		}
-	}
 	if ms.SearchBtn.Clicked(gtx) && !ms.IsLoading {
 		text := strings.TrimSpace(ms.Search.Text())
 		if text != "" {

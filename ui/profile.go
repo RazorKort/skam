@@ -8,7 +8,6 @@ import (
 	"gioui.org/layout"
 	"gioui.org/unit"
 	"gioui.org/widget"
-	"gioui.org/widget/material"
 	"golang.org/x/exp/shiny/materialdesign/icons"
 )
 
@@ -49,11 +48,7 @@ func (ps *ProfileScreen) Layout(gtx layout.Context, th *AppTheme) layout.Dimensi
 			})
 		}),
 		layout.Stacked(func(gtx layout.Context) layout.Dimensions {
-			btn := material.IconButton(th.Theme, &ps.BackBtn, &ps.BackIcon, "back arrow")
-			btn.Size = unit.Dp(20)
-			btn.Background = th.Bg
-			btn.Color = th.Colors.Secondary
-			btn.Inset = layout.UniformInset(unit.Dp(10))
+			btn := th.IconButtonSecondary(&ps.BackBtn, &ps.BackIcon, "back arrow")
 			inset := layout.UniformInset(unit.Dp(10))
 			return inset.Layout(gtx, btn.Layout)
 		}),

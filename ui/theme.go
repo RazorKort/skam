@@ -18,34 +18,38 @@ type AppTheme struct {
 }
 
 type AppColors struct {
-	Primary       color.NRGBA
-	Secondary     color.NRGBA
-	Error         color.NRGBA
-	Success       color.NRGBA
-	Warning       color.NRGBA
-	Background    color.NRGBA
-	Surface       color.NRGBA
-	OnPrimary     color.NRGBA
-	OnSecondary   color.NRGBA
-	TextPrimary   color.NRGBA
-	TextSecondary color.NRGBA
+	Primary             color.NRGBA
+	Secondary           color.NRGBA
+	Error               color.NRGBA
+	Success             color.NRGBA
+	Warning             color.NRGBA
+	Background          color.NRGBA
+	BackgroundSecondary color.NRGBA
+	Surface             color.NRGBA
+	Border              color.NRGBA
+	OnPrimary           color.NRGBA
+	OnSecondary         color.NRGBA
+	TextPrimary         color.NRGBA
+	TextSecondary       color.NRGBA
 }
 
 func NewAppTheme() *AppTheme {
 	base := material.NewTheme()
 
 	colors := AppColors{
-		Primary:       rgba(96, 202, 160, 255),
-		Secondary:     rgba(52, 211, 153, 255),
-		Error:         rgba(248, 113, 113, 255),
-		Success:       rgba(110, 231, 183, 255),
-		Warning:       rgba(251, 191, 36, 255),
-		Background:    rgba(23, 23, 23, 255),
-		Surface:       rgba(38, 38, 38, 255),
-		OnPrimary:     rgba(0, 0, 0, 230),
-		OnSecondary:   rgba(0, 0, 0, 230),
-		TextPrimary:   rgba(250, 250, 250, 255),
-		TextSecondary: rgba(163, 163, 163, 255),
+		Primary:             rgba(96, 202, 160, 255),
+		Secondary:           rgba(52, 211, 153, 255),
+		Error:               rgba(248, 113, 113, 255),
+		Success:             rgba(110, 231, 183, 255),
+		Warning:             rgba(251, 191, 36, 255),
+		Background:          rgba(23, 23, 23, 255),
+		BackgroundSecondary: rgba(35, 35, 35, 255),
+		Surface:             rgba(38, 38, 38, 255),
+		OnPrimary:           rgba(0, 0, 0, 230),
+		OnSecondary:         rgba(0, 0, 0, 230),
+		TextPrimary:         rgba(250, 250, 250, 255),
+		TextSecondary:       rgba(163, 163, 163, 255),
+		Border:              rgba(55, 55, 55, 127),
 	}
 
 	base.Palette = material.Palette{
@@ -141,6 +145,15 @@ func (t *AppTheme) CaptionSecondary(text string) material.LabelStyle {
 	lbl := material.Caption(t.Theme, text)
 	lbl.Color = t.Colors.TextSecondary
 	return lbl
+}
+
+func (t *AppTheme) IconButtonSecondary(button *widget.Clickable, icon *widget.Icon, description string) material.IconButtonStyle {
+	btn := material.IconButton(t.Theme, button, icon, description)
+	btn.Size = unit.Dp(20)
+	btn.Background = t.Bg
+	btn.Color = t.Colors.Secondary
+	btn.Inset = layout.UniformInset(unit.Dp(10))
+	return btn
 }
 
 func (t *AppTheme) Background(gtx layout.Context) layout.Context {

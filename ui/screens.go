@@ -33,8 +33,8 @@ type LoginScreen struct {
 	ImportKeyBtn widget.Clickable
 	RegisterBtn  widget.Clickable
 	inset        layout.Inset
-
-	msgs chan<- Msg
+	needFoucs    bool
+	msgs         chan<- Msg
 
 	IsLoading bool
 }
